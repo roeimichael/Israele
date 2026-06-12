@@ -2,11 +2,11 @@
 const STRINGS = {
   he: {
     site_title: "IsraelE — פאזל יומי של מקומות בישראל",
-    site_desc: "פאזל יומי בסגנון וורדל לישראל. 6 מקומות. נקודה אחת על המפה. כמה אתם מכירים את הארץ?",
+    site_desc: "פאזל יומי בסגנון וורדל לישראל. 5 מקומות. נקודה אחת על המפה. כמה אתם מכירים את הארץ?",
     splash_loading: "טוען",
     tagline: "כמה טוב אתם מכירים את ישראל?",
-    tagline_sub: "6 מקומות חדשים בכל יום, אותו סט לכולם.",
-    legend_cities: "2 ערים",
+    tagline_sub: "5 מקומות חדשים בכל יום, אותו סט לכולם.",
+    legend_cities: "עיר אחת",
     legend_settlements: "2 יישובים",
     legend_landmarks: "2 אתרים",
     game_total_hint_pre: "עד",
@@ -23,7 +23,7 @@ const STRINGS = {
     btn_save: "שמור",
     btn_signout: "התנתק",
     end_title: "סיום משחק",
-    final_max: "מתוך 1000",
+    final_max: "מתוך {max}",
     btn_share: "📋 העתק תוצאה",
     btn_share_title: "אתגרו את החברים שלכם",
     btn_share_sub: "בדקו אם מישהו יצליח לעבור אתכם",
@@ -46,6 +46,16 @@ const STRINGS = {
     btn_fresh_guest: "↺ התחל מחדש כאורח חדש",
     history_title: "היסטוריה",
     btn_close: "סגור",
+    set_title: "הגדרות",
+    set_sound: "צליל",
+    set_tap: "אישור לחיצה",
+    set_lang: "שפה",
+    set_howto: "איך משחקים",
+    set_stats: "סטטיסטיקות",
+    lbs_your_score: "הניקוד שלך",
+    lbs_rank: "מקום",
+    lbs_vs_avg: "מול הממוצע",
+    lbs_streak: "רצף",
     lb_title: "לוח יומי",
     stats_title: "סטטיסטיקות",
     stats_games: "משחקים",
@@ -58,7 +68,7 @@ const STRINGS = {
     howto_scoring_title: "ניקוד",
     howto_scoring_p: "ככל שלחצתם <b>קרוב יותר</b>, יותר נקודות. עד 250 לסבב בודד, עד <b>1000</b> בכל יום.",
     howto_daily_title: "פאזל יומי",
-    howto_daily_p1: "כולם משחקים את אותם 6 מקומות. הפאזל מתחלף ב-<b>00:00</b> שעון ישראל.",
+    howto_daily_p1: "כולם משחקים את אותם 5 מקומות. הפאזל מתחלף ב-<b>00:00</b> שעון ישראל.",
     howto_daily_p2: "אפשר לשתף את התוצאה כמו בוורדל ולהשוות לחברים.",
     howto_back: "חזור",
     howto_next: "הבא",
@@ -74,7 +84,7 @@ const STRINGS = {
     archive_hint: "לחצו על תאריך כדי לשחק את הפאזל של אותו יום.",
     prompt_where: "איפה",
     where_q: "?",
-    round_n_of: "סבב {n} / 6",
+    round_n_of: "סבב {n} / 5",
     score_label: "ניקוד",
     km_from_you: "ק״מ ממך",
     btn_summary: "סיכום",
@@ -117,11 +127,11 @@ const STRINGS = {
   },
   en: {
     site_title: "IsraelE — Daily Israel Geography Puzzle",
-    site_desc: "Daily Wordle-style geography puzzle for Israel. 6 places, one map, up to 1000 points.",
+    site_desc: "Daily Wordle-style geography puzzle for Israel. 5 places, one map, up to 1000 points.",
     splash_loading: "Loading",
     tagline: "How well do you know Israel?",
-    tagline_sub: "6 fresh places every day. Same set for everyone.",
-    legend_cities: "2 cities",
+    tagline_sub: "5 fresh places every day. Same set for everyone.",
+    legend_cities: "1 city",
     legend_settlements: "2 settlements",
     legend_landmarks: "2 landmarks",
     game_total_hint_pre: "Up to",
@@ -138,7 +148,7 @@ const STRINGS = {
     btn_save: "Save",
     btn_signout: "Sign out",
     end_title: "Game over",
-    final_max: "out of 1000",
+    final_max: "out of {max}",
     btn_share: "📋 Copy result",
     btn_share_title: "Challenge your friends",
     btn_share_sub: "See if anyone can beat your score",
@@ -161,6 +171,16 @@ const STRINGS = {
     btn_fresh_guest: "↺ Start fresh as guest",
     history_title: "History",
     btn_close: "Close",
+    set_title: "Settings",
+    set_sound: "Sound",
+    set_tap: "Tap to confirm",
+    set_lang: "Language",
+    set_howto: "How to play",
+    set_stats: "Statistics",
+    lbs_your_score: "Your score",
+    lbs_rank: "Rank",
+    lbs_vs_avg: "vs avg",
+    lbs_streak: "Streak",
     lb_title: "Daily leaderboard",
     stats_title: "Stats",
     stats_games: "games",
@@ -173,7 +193,7 @@ const STRINGS = {
     howto_scoring_title: "Scoring",
     howto_scoring_p: "The <b>closer</b> your click, the more points. Up to 250 per round, up to <b>1000</b> per day.",
     howto_daily_title: "Daily puzzle",
-    howto_daily_p1: "Everyone plays the same 6 places. Resets at <b>midnight</b> Israel time.",
+    howto_daily_p1: "Everyone plays the same 5 places. Resets at <b>midnight</b> Israel time.",
     howto_daily_p2: "Share your result Wordle-style and compare with friends.",
     howto_back: "Back",
     howto_next: "Next",
@@ -189,7 +209,7 @@ const STRINGS = {
     archive_hint: "Tap any date to play that day's puzzle.",
     prompt_where: "Where is",
     where_q: "?",
-    round_n_of: "Round {n} / 6",
+    round_n_of: "Round {n} / 5",
     score_label: "Score",
     km_from_you: "km away",
     btn_summary: "Summary",
@@ -276,10 +296,18 @@ const TYPE_ICON = {
 
 function placeTag(r) {
   // Always show the most specific type (e.g. "אתר ארכיאולוגי" not "אתר").
-  // Multiplier badge already conveys the broad category, so no duplication.
   const icon = TYPE_ICON[r.type] || "📍";
   const label = typeLabel(r.type);
   return { icon, label, klass: multClass(r.multiplier) };
+}
+
+// HUD place-type pill: type label + its multiplier folded in ("עיר ×1").
+function _setPlaceTag(r) {
+  const tag = placeTag(r);
+  const el = document.getElementById("place-type");
+  el.className = `place-tag ${tag.klass}`;
+  el.innerHTML = `<span class="pt-label">${escapeHtml(tag.label)}</span>`
+    + `<span class="pt-mult">×${r.multiplier}</span>`;
 }
 
 function applyI18n() {
@@ -302,7 +330,10 @@ function applyI18n() {
     el.innerHTML = T(el.getAttribute("data-i18n-html"));
   });
   const btn = document.getElementById("btn-lang");
-  if (btn) btn.textContent = LANG === "he" ? "EN" : "עב";
+  if (btn) {
+    const v = btn.querySelector(".set-value") || btn;
+    v.textContent = LANG === "he" ? "EN" : "עב";
+  }
 }
 
 function toggleLang() {
@@ -382,10 +413,7 @@ function repaintDynamic() {
   if (state.rounds.length && state.cursor < state.rounds.length && state.awaitingClick) {
     const r = state.rounds[state.cursor];
     document.getElementById("place-name-he").textContent = LANG === "he" ? r.name_he : (r.name_en || r.name_he);
-    const tag = placeTag(r);
-    const tagEl = document.getElementById("place-type");
-    tagEl.className = `place-tag ${tag.klass}`;
-    tagEl.textContent = tag.label;
+    _setPlaceTag(r);
     document.getElementById("round-score").textContent = state.totalScore;
   }
   // Re-render reveal place name if visible
@@ -461,7 +489,18 @@ async function init() {
     dragRotate: false, pitchWithRotate: false, touchPitch: false,
     clickTolerance: 6,
     fadeDuration: 80,
+    attributionControl: false,
   });
+  // Compact attribution: a small ⓘ that expands on tap, instead of a wide bar.
+  // MapLibre renders the compact <details> expanded and re-opens it whenever a
+  // source's attribution updates, so collapse it after the map settles.
+  map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-right");
+  const collapseAttrib = () => {
+    const d = document.querySelector(".maplibregl-ctrl-attrib.maplibregl-compact");
+    if (d) { d.removeAttribute("open"); d.classList.remove("maplibregl-compact-show"); }
+  };
+  map.on("load", collapseAttrib);
+  map.on("idle", collapseAttrib);
   map.touchZoomRotate?.disableRotation();
   map.on("click", onMapClick);
   map.on("load", addIsraelMask);
@@ -509,10 +548,20 @@ async function init() {
   document.getElementById("btn-help").onclick = () => openHowto(0, true);
   document.getElementById("btn-stats").onclick = openStats;
   document.getElementById("btn-stats-close").onclick = closeModal;
-  document.getElementById("btn-sound").onclick = toggleSound;
-  document.getElementById("btn-confirm-tap").onclick = toggleConfirmTap;
+  // Settings are Shoelace switches now (labeled, keyboard + screen-reader friendly).
+  const swSound = document.getElementById("sw-sound");
+  const swTap = document.getElementById("sw-tap");
+  if (swSound) {
+    swSound.checked = soundOn;
+    swSound.addEventListener("sl-change", () => setSound(swSound.checked));
+  }
+  if (swTap) {
+    swTap.checked = confirmTap;
+    swTap.addEventListener("sl-change", () => setConfirmTap(swTap.checked));
+  }
   document.getElementById("btn-confirm-guess").onclick = onConfirmGuess;
   wireToolbarMenu();
+  wireModalDismiss();
   document.getElementById("btn-lang").onclick = toggleLang;
   document.getElementById("btn-archive").onclick = openArchive;
   document.getElementById("btn-archive-close").onclick = closeModal;
@@ -632,7 +681,7 @@ async function loadTodayIntoState(preFetched) {
     }
     // Resume mid-game: server has 1-5 guesses already. Jump straight back
     // into the next round so a refresh doesn't drop the user at the start card.
-    if (me.guesses && me.guesses.length > 0 && me.guesses.length < 6) {
+    if (me.guesses && me.guesses.length > 0 && me.guesses.length < state.rounds.length) {
       state.played = me.guesses;
       state.totalScore = me.total_score || 0;
       state.cursor = me.guesses.length;
@@ -794,7 +843,7 @@ async function onSaveName() {
 async function beginDay() {
   // Fast path: init() pre-loaded state. No network on click.
   if (state.rounds.length && state.date) {
-    if (state.played.length >= 6) { showEnd(true); return; }
+    if (state.played.length >= state.rounds.length) { showEnd(true); return; }
     showCard(null);
     await loadRound();
     return;
@@ -833,7 +882,7 @@ async function beginDay() {
   }
   showSpinner(false);
 
-  if (state.played.length >= 6) {
+  if (state.played.length >= state.rounds.length) {
     showEnd(true);
     return;
   }
@@ -844,17 +893,9 @@ async function beginDay() {
 async function loadRound() {
   const r = state.rounds[state.cursor];
   document.getElementById("place-name-he").textContent = LANG === "he" ? r.name_he : (r.name_en || r.name_he);
-  // Type pill — color-tinted by multiplier category, no icon.
-  const tag = placeTag(r);
-  const tagEl = document.getElementById("place-type");
-  tagEl.className = `place-tag ${tag.klass}`;
-  tagEl.textContent = tag.label;
+  _setPlaceTag(r);
   // Progress dots (●●●○○○) instead of "Round 3 / 6" text.
-  document.getElementById("round-num").innerHTML = _renderDots(state.cursor, 6);
-  document.getElementById("day-num").textContent = `#${state.dayNumber}`;
-  const multEl = document.getElementById("round-mult");
-  multEl.textContent = `×${r.multiplier}`;
-  multEl.className = `mult ${multClass(r.multiplier)}`;
+  document.getElementById("round-num").innerHTML = _renderDots(state.cursor, state.rounds.length);
   document.getElementById("round-score").textContent = state.totalScore;
   document.getElementById("hud").classList.remove("hidden");
   state.awaitingClick = true;
@@ -1387,10 +1428,14 @@ function onNext() {
 }
 
 function showEnd(restored) {
-  document.getElementById("emoji-strip").textContent = emojiStrip(state.played);
+  renderRoundChips();
   renderPlacesList();
-  renderRankStrip();
-  renderAvgLine();
+  // Per-day max is computed from the rounds' multipliers (1000 for the 1·2·2
+  // format, 1100 for pre-switch 2·2·2 archive days) — never hardcoded.
+  const maxScore = state.rounds.reduce((s, r) => s + Math.round(100 * (r.multiplier || 0)), 0) || 1000;
+  document.getElementById("final-max").textContent = T("final_max", { max: maxScore });
+  // Per-user comparison stats (rank / vs-avg / streak) now live on the daily
+  // board, not here — the end card stays focused on score + chips + share.
   showCard("end-card");
   if (restored) {
     document.getElementById("final-score").textContent = state.totalScore;
@@ -1399,65 +1444,31 @@ function showEnd(restored) {
   }
 }
 
-function renderAvgLine() {
-  const el = document.getElementById("avg-line");
-  if (state.archive || state.averageScore == null) {
-    el.classList.add("hidden");
-    return;
-  }
-  const avg = state.averageScore;
-  const delta = state.totalScore - avg;
-  const deltaText = delta >= 0
-    ? T("delta_above", { d: delta })
-    : T("delta_below", { d: delta });
-  const deltaCls = delta >= 0 ? "delta-pos" : "delta-neg";
-  el.innerHTML = `<span class="avg-text">${escapeHtml(T("avg_today", { avg }))}</span> <span class="avg-delta ${deltaCls}">${escapeHtml(deltaText)}</span>`;
-  el.classList.remove("hidden");
-}
-
-function renderRankStrip() {
-  const strip = document.getElementById("rank-strip");
-  const head = document.getElementById("rank-headline");
-  const sub = document.getElementById("rank-sub");
-  // Archive mode: no leaderboard / rank info available.
+// Daily-board personal summary: your score, rank, gap-vs-average, streak.
+// Moved here from the end card so post-game comparison lives in one place.
+function renderLbStats() {
+  const el = document.getElementById("lb-stats");
+  if (!el) return;
   if (state.archive || state.rank == null) {
-    strip.classList.add("hidden");
+    el.classList.add("hidden");
+    el.innerHTML = "";
     return;
   }
-  strip.classList.remove("hidden");
-  const rank = state.rank;
-  const pct = state.percentile ?? 0;
-  const total = state.totalPlayers ?? 1;
-  if (rank <= 3) {
-    head.textContent = T("rank_top", { rank });
-  } else if (total === 1) {
-    head.textContent = T("rank_solo");
-  } else if (pct > 0) {
-    head.textContent = T("rank_beat", { pct });
-  } else {
-    head.textContent = T("rank_zero");
+  const chips = [
+    `<div class="lbs-chip"><b>${state.totalScore}</b><span>${escapeHtml(T("lbs_your_score"))}</span></div>`,
+    `<div class="lbs-chip"><b>#${state.rank}</b><span>${escapeHtml(T("lbs_rank"))} / ${state.totalPlayers ?? 1}</span></div>`,
+  ];
+  if (state.averageScore != null) {
+    const delta = state.totalScore - state.averageScore;
+    const dtxt = (delta >= 0 ? "+" : "") + delta;
+    const cls = delta >= 0 ? "delta-pos" : "delta-neg";
+    chips.push(`<div class="lbs-chip"><b class="${cls}">${dtxt}</b><span>${escapeHtml(T("lbs_vs_avg"))}</span></div>`);
   }
-  sub.textContent = `#${rank} / ${total}`;
-  // Streak badge — only shown when ≥1 day streak.
-  const streakEl = document.getElementById("rank-streak");
   if ((state.streak || 0) >= 1) {
-    streakEl.textContent = state.streak === 1
-      ? T("streak_one")
-      : T("streak_days", { n: state.streak });
-    streakEl.classList.remove("hidden");
-  } else {
-    streakEl.classList.add("hidden");
+    chips.push(`<div class="lbs-chip"><b>🔥 ${state.streak}</b><span>${escapeHtml(T("lbs_streak"))}</span></div>`);
   }
-  // Color tier: gold → green → blue → yellow → orange → red. Pure percentile,
-  // but rank<=3 forces gold regardless so podium feels podium.
-  strip.classList.remove("tier-gold", "tier-green", "tier-blue", "tier-yellow", "tier-orange", "tier-red");
-  let tier = "tier-red";
-  if (rank <= 3) tier = "tier-gold";
-  else if (pct >= 80) tier = "tier-green";
-  else if (pct >= 60) tier = "tier-blue";
-  else if (pct >= 40) tier = "tier-yellow";
-  else if (pct >= 20) tier = "tier-orange";
-  strip.classList.add(tier);
+  el.innerHTML = chips.join("");
+  el.classList.remove("hidden");
 }
 
 function renderPlacesList() {
@@ -1508,14 +1519,20 @@ function scoreEmoji(pct) {
   return PALETTE[4];                  // 🌵
 }
 
-function emojiStrip(played) {
-  // "base_score + emoji" per round, joined by a thin space.
-  // Was emoji-only before; numbers make the result more skimmable in shares too.
-  return played
-    .slice()
-    .sort((a, b) => a.round_idx - b.round_idx)
-    .map((g) => `${g.base_score}${scoreEmoji(g.base_score / 100)}`)
-    .join("  ");
+// End-card: per-round result chips (emoji + base score), tier-colored.
+// Cleaner + more skimmable than the old inline "47🐪 12🌵" run-on string.
+function renderRoundChips() {
+  const el = document.getElementById("emoji-strip");
+  if (!el) return;
+  const rounds = state.played.slice().sort((a, b) => a.round_idx - b.round_idx);
+  el.innerHTML = rounds.map((g) => {
+    const pct = g.base_score / 100;
+    const tier = pct >= 0.8 ? "good" : pct >= 0.5 ? "mid" : "low";
+    return `<div class="round-chip tier-${tier}">`
+      + `<span class="rc-emoji">${scoreEmoji(pct)}</span>`
+      + `<span class="rc-score">${g.base_score}</span>`
+      + `</div>`;
+  }).join("");
 }
 
 function buildShareText() {
@@ -1575,6 +1592,7 @@ async function openLeaderboard() {
   list.innerHTML = rows.length
     ? rows.join("")
     : `<p>${T("no_lb_yet")}</p>`;
+  renderLbStats();
   openModal("lb-card");
 }
 
@@ -1646,13 +1664,27 @@ function showCard(cardId, passThrough = false) {
 }
 
 function flashToast(msg, kind = "err") {
-  let t = document.getElementById("toast");
-  if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
-  t.textContent = msg;
-  t.dataset.kind = kind;
-  t.classList.add("show");
-  clearTimeout(flashToast._h);
-  flashToast._h = setTimeout(() => t.classList.remove("show"), 1700);
+  // Shoelace alert toast: role=alert live region (screen-reader announced),
+  // stacks, dismissible. Falls back to a plain div if Shoelace isn't up.
+  try {
+    const variant = kind === "ok" ? "success" : "danger";
+    const icon = kind === "ok" ? "check2-circle" : "exclamation-triangle";
+    const alert = document.createElement("sl-alert");
+    alert.variant = variant;
+    alert.closable = true;
+    alert.duration = 2400;
+    alert.innerHTML = `<sl-icon slot="icon" name="${icon}"></sl-icon>${escapeHtml(msg)}`;
+    document.body.appendChild(alert);
+    customElements.whenDefined("sl-alert").then(() => alert.toast());
+  } catch (_) {
+    let t = document.getElementById("toast");
+    if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.dataset.kind = kind;
+    t.classList.add("show");
+    clearTimeout(flashToast._h);
+    flashToast._h = setTimeout(() => t.classList.remove("show"), 1700);
+  }
 }
 
 function escapeHtml(s) {
@@ -1689,6 +1721,7 @@ function startCountdown() {
 
 // ─── Modals (stats / leaderboard / history) — preserve underlying state ────
 let _modalSnap = null;
+let _modalOpener = null;   // element to restore focus to on close (a11y)
 function openModal(cardId) {
   // Snapshot whatever's currently visible so closeModal can restore it.
   const overlay = document.getElementById("overlay");
@@ -1698,13 +1731,27 @@ function openModal(cardId) {
     hudVisible: !document.getElementById("hud").classList.contains("hidden"),
     cardId: visibleCard ? visibleCard.id : null,
   };
+  _modalOpener = document.activeElement;
   document.getElementById("hud").classList.add("hidden");
   showCard(cardId);
+  // a11y: mark as dialog, lock background scroll, move focus inside.
+  const card = document.getElementById(cardId);
+  if (card) {
+    card.setAttribute("role", "dialog");
+    card.setAttribute("aria-modal", "true");
+    document.body.classList.add("modal-open");
+    requestAnimationFrame(() => {
+      const f = card.querySelector(_FOCUSABLE);
+      (f || card).focus?.();
+    });
+  }
 }
 function closeModal() {
+  document.body.classList.remove("modal-open");
   const s = _modalSnap; _modalSnap = null;
-  if (!s) { showCard("start-card"); return; }
-  if (s.hudVisible) {
+  const opener = _modalOpener; _modalOpener = null;
+  if (!s) { showCard("start-card"); }
+  else if (s.hudVisible) {
     showCard(null);
     document.getElementById("hud").classList.remove("hidden");
   } else if (s.cardId) {
@@ -1712,6 +1759,33 @@ function closeModal() {
   } else {
     showCard("start-card");
   }
+  opener?.focus?.();
+}
+
+// Esc to close, tap-backdrop to close, Tab kept inside the open modal.
+const _FOCUSABLE = 'button:not(.hidden):not([disabled]), a[href], input, sl-switch, [tabindex]:not([tabindex="-1"])';
+function _topModalCard() {
+  return document.querySelector("#overlay .card:not(.hidden)");
+}
+function wireModalDismiss() {
+  document.addEventListener("keydown", (e) => {
+    if (!_modalSnap) return;
+    const card = _topModalCard();
+    if (!card || card.id === "name-card") return;   // name is a required prompt
+    if (e.key === "Escape") { closeModal(); return; }
+    if (e.key === "Tab") {
+      const f = Array.from(card.querySelectorAll(_FOCUSABLE));
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+  document.getElementById("overlay").addEventListener("click", (e) => {
+    if (e.target.id !== "overlay" || !_modalSnap) return;
+    const card = _topModalCard();
+    if (card && card.id !== "name-card") closeModal();
+  });
 }
 
 async function openStats() {
@@ -1885,24 +1959,19 @@ function paintHowto() {
 }
 
 // ─── Toggles ────────────────────────────────────────────────────────────────
-function toggleSound() {
-  soundOn = !soundOn;
+function setSound(on) {
+  soundOn = on;
   localStorage.setItem("israelle_sound", soundOn ? "on" : "off");
   applyToggleVisuals();
-  toggleSoundToast();
+  flashToast(soundOn ? T("sound_on") : T("sound_off"), "ok");
   if (soundOn) chime(800);
 }
-function toggleSoundToast() {
-  flashToast(soundOn ? T("sound_on") : T("sound_off"), "ok");
-}
+function toggleSound() { setSound(!soundOn); }
 function applyToggleVisuals() {
-  const s = document.getElementById("btn-sound");
-  if (s) {
-    s.textContent = soundOn ? "🔊" : "🔇";
-    s.classList.toggle("sound-off", !soundOn);
-  }
-  const c = document.getElementById("btn-confirm-tap");
-  if (c) c.classList.toggle("on", confirmTap);
+  const s = document.getElementById("sw-sound");
+  if (s && s.checked !== soundOn) s.checked = soundOn;
+  const c = document.getElementById("sw-tap");
+  if (c && c.checked !== confirmTap) c.checked = confirmTap;
 }
 
 function wireToolbarMenu() {
@@ -1917,19 +1986,22 @@ function wireToolbarMenu() {
     const open = toolbar.classList.toggle("open");
     burger.setAttribute("aria-expanded", open ? "true" : "false");
   };
-  toolbar.querySelector(".tb-items").addEventListener("click", close);
+  // Close on a chosen action (lang/how-to/stats) but NOT on switch toggles,
+  // so you can flip Sound/Tap and keep the menu open.
+  toolbar.querySelectorAll(".set-action").forEach((b) => b.addEventListener("click", close));
   document.addEventListener("click", (e) => {
     if (toolbar.classList.contains("open") && !toolbar.contains(e.target)) close();
   });
 }
 
-function toggleConfirmTap() {
-  confirmTap = !confirmTap;
+function setConfirmTap(on) {
+  confirmTap = on;
   localStorage.setItem("israelle_confirm_tap", confirmTap ? "on" : "off");
   applyToggleVisuals();
   flashToast(confirmTap ? T("confirm_tap_on") : T("confirm_tap_off"), "ok");
   if (!confirmTap) clearPendingGuess();
 }
+function toggleConfirmTap() { setConfirmTap(!confirmTap); }
 
 // ─── Sound (Web Audio chime) ────────────────────────────────────────────────
 function chime(freq = 880) {

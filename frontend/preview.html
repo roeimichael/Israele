@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>IsraelE — Mobile Preview Harness (dev)</title>
+<style>
+  :root {
+    --bg: #0a1424;
+    --panel: #111d33;
+    --line: #24344f;
+    --txt: #e7eefc;
+    --muted: #8aa0c6;
+    --accent: #0038b8;
+    --accent-2: #4f7bff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(1200px 800px at 70% -10%, #16263f 0%, var(--bg) 60%);
+    color: var(--txt);
+    font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    display: flex; flex-direction: column;
+  }
+
+  /* ── control bar ─────────────────────────────────── */
+  header {
+    flex: 0 0 auto;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: rgba(10,20,36,.85);
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  header .brand { font-weight: 700; letter-spacing: .3px; margin-right: 6px; }
+  header .brand small { color: var(--muted); font-weight: 400; }
+  .group { display: flex; align-items: center; gap: 6px; }
+  .group + .group { padding-left: 10px; border-left: 1px solid var(--line); }
+  label.lbl { color: var(--muted); font-size: 12px; }
+  select, button, input[type=text] {
+    background: var(--panel); color: var(--txt);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 10px; font: inherit; cursor: pointer;
+  }
+  input[type=text] { cursor: text; min-width: 90px; }
+  button:hover, select:hover { border-color: var(--accent-2); }
+  button.active { background: var(--accent); border-color: var(--accent-2); }
+  .dims { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 96px; }
+  input[type=range] { accent-color: var(--accent-2); }
+
+  /* ── stage ───────────────────────────────────────── */
+  main {
+    flex: 1 1 auto; overflow: auto;
+    display: flex; align-items: flex-start; justify-content: center;
+    gap: 40px; padding: 32px; flex-wrap: wrap;
+  }
+  .device { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .device .caption { color: var(--muted); font-size: 12px; }
+
+  /* phone bezel */
+  .phone {
+    position: relative;
+    background: #05080f;
+    border: 2px solid #2b3c5c;
+    border-radius: 44px;
+    padding: 14px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55), inset 0 0 0 2px #0c1526;
+    transform-origin: top center;
+  }
+  .phone::before { /* notch */
+    content: ""; position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    width: 38%; height: 26px; background: #05080f; border-radius: 0 0 16px 16px; z-index: 3;
+  }
+  .phone.no-notch::before { display: none; }
+  .screen {
+    position: relative; overflow: hidden;
+    border-radius: 32px; background: #0a1424;
+    display: block;
+  }
+  .screen iframe {
+    border: 0; display: block; width: 100%; height: 100%;
+    background: #0a1424;
+  }
+  /* drag-free scroll hint */
+  .phone .pwr { position: absolute; right: -4px; top: 120px; width: 4px; height: 56px; background: #2b3c5c; border-radius: 4px; }
+  .phone .vol { position: absolute; left: -4px; top: 96px; width: 4px; height: 36px; background: #2b3c5c; border-radius: 4px; }
+  .phone .vol.v2 { top: 140px; }
+
+  .hint { color: var(--muted); font-size: 12px; max-width: 520px; }
+  kbd { background: var(--panel); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; font-size: 11px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">IsraelE <small>mobile preview</small></span>
+
+  <div class="group">
+    <label class="lbl" for="device">Device</label>
+    <select id="device"></select>
+  </div>
+
+  <div class="group">
+    <button id="rotate" title="Rotate (r)">⟳ Rotate</button>
+    <span class="dims" id="dims">— × —</span>
+  </div>
+
+  <div class="group">
+    <label class="lbl" for="zoom">Zoom</label>
+    <input type="range" id="zoom" min="40" max="100" value="100" step="5" />
+    <span class="dims" id="zoomval" style="min-width:42px">100%</span>
+    <button id="zoomfit" title="Fit height">Fit</button>
+  </div>
+
+  <div class="group">
+    <button id="compare" title="Show two devices side by side">Compare: off</button>
+  </div>
+
+  <div class="group">
+    <label class="lbl" for="url">URL</label>
+    <input type="text" id="url" value="/" />
+    <button id="reload" title="Reload (shift+r)">↻ Reload</button>
+  </div>
+</header>
+
+<main id="stage"></main>
+
+<script>
+const DEVICES = [
+  { id: "iphone-se",   name: "iPhone SE",          w: 375, h: 667, notch: false },
+  { id: "iphone-13",   name: "iPhone 13/14",       w: 390, h: 844, notch: true  },
+  { id: "iphone-15pm", name: "iPhone 15 Pro Max",  w: 430, h: 932, notch: true  },
+  { id: "pixel-7",     name: "Pixel 7",            w: 412, h: 915, notch: false },
+  { id: "galaxy-s8",   name: "Galaxy S8",          w: 360, h: 740, notch: false },
+  { id: "small-320",   name: "Small 320",          w: 320, h: 568, notch: false },
+  { id: "ipad-mini",   name: "iPad mini",          w: 768, h: 1024, notch: false },
+];
+
+const stage = document.getElementById("stage");
+const deviceSel = document.getElementById("device");
+const dimsEl = document.getElementById("dims");
+const zoomEl = document.getElementById("zoom");
+const zoomVal = document.getElementById("zoomval");
+
+let state = {
+  device: DEVICES[1],
+  landscape: false,
+  zoom: 1,
+  compare: false,
+};
+
+// populate device picker
+DEVICES.forEach((d, i) => {
+  const o = document.createElement("option");
+  o.value = d.id; o.textContent = `${d.name} (${d.w}×${d.h})`;
+  if (i === 1) o.selected = true;
+  deviceSel.appendChild(o);
+});
+
+function dims() {
+  const d = state.device;
+  return state.landscape ? { w: d.h, h: d.w } : { w: d.w, h: d.h };
+}
+
+function buildPhone(dev, landscape, zoom, label) {
+  const w = landscape ? dev.h : dev.w;
+  const h = landscape ? dev.w : dev.h;
+  const wrap = document.createElement("div");
+  wrap.className = "device";
+
+  const phone = document.createElement("div");
+  phone.className = "phone" + (dev.notch && !landscape ? "" : " no-notch");
+  phone.style.transform = `scale(${zoom})`;
+
+  const screen = document.createElement("div");
+  screen.className = "screen";
+  screen.style.width = w + "px";
+  screen.style.height = h + "px";
+
+  const iframe = document.createElement("iframe");
+  iframe.src = document.getElementById("url").value || "/";
+  iframe.setAttribute("title", dev.name);
+  // emulate touch / mobile UA hints where supported
+  screen.appendChild(iframe);
+
+  phone.appendChild(screen);
+  phone.insertAdjacentHTML("beforeend", '<span class="pwr"></span><span class="vol"></span><span class="vol v2"></span>');
+  wrap.appendChild(phone);
+
+  const cap = document.createElement("div");
+  cap.className = "caption";
+  cap.textContent = label || `${dev.name} — ${w}×${h}${landscape ? " (landscape)" : ""}`;
+  wrap.appendChild(cap);
+  return wrap;
+}
+
+function render() {
+  stage.innerHTML = "";
+  const { w, h } = dims();
+  dimsEl.textContent = `${w} × ${h}`;
+  zoomVal.textContent = Math.round(state.zoom * 100) + "%";
+
+  stage.appendChild(buildPhone(state.device, state.landscape, state.zoom));
+  if (state.compare) {
+    // second device = next in list, for quick A/B of breakpoints
+    const idx = DEVICES.indexOf(state.device);
+    const other = DEVICES[(idx + 1) % DEVICES.length];
+    stage.appendChild(buildPhone(other, state.landscape, state.zoom));
+  }
+}
+
+function fitHeight() {
+  const { h } = dims();
+  const avail = stage.clientHeight - 80; // padding + caption
+  const z = Math.min(1, avail / h);
+  state.zoom = Math.max(0.4, Math.round(z * 20) / 20);
+  zoomEl.value = Math.round(state.zoom * 100);
+  render();
+}
+
+deviceSel.onchange = () => {
+  state.device = DEVICES.find(d => d.id === deviceSel.value);
+  render();
+};
+document.getElementById("rotate").onclick = () => { state.landscape = !state.landscape; render(); };
+zoomEl.oninput = () => { state.zoom = +zoomEl.value / 100; render(); };
+document.getElementById("zoomfit").onclick = fitHeight;
+document.getElementById("reload").onclick = render;
+document.getElementById("url").onchange = render;
+document.getElementById("compare").onclick = (e) => {
+  state.compare = !state.compare;
+  e.target.textContent = "Compare: " + (state.compare ? "on" : "off");
+  e.target.classList.toggle("active", state.compare);
+  render();
+};
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  if (e.key === "r" && !e.shiftKey) { state.landscape = !state.landscape; render(); }
+  if (e.key === "R" || (e.key === "r" && e.shiftKey)) render();
+  if (e.key === "f") fitHeight();
+});
+
+render();
+// auto-fit on first paint if phone taller than viewport
+requestAnimationFrame(fitHeight);
+</script>
+</body>
+</html>

@@ -50,8 +50,8 @@ if not _border_path.exists():
 ISRAEL_BORDER = json.loads(_border_path.read_text(encoding="utf-8"))
 
 IL_TZ = ZoneInfo("Asia/Jerusalem")
-# Day #1 of IsraelE. All future "puzzle numbers" are (today - EPOCH).days + 1.
-EPOCH = date(2026, 5, 12)
+# Day #1 of IsraelE (public launch). Puzzle numbers are (today - EPOCH).days + 1.
+EPOCH = date(2026, 6, 14)
 
 
 def _il_today_iso() -> str:
@@ -258,9 +258,9 @@ def puzzle_guess(d: str, body: GuessIn):
         raise HTTPException(400, "use /api/today/guess")
     if target < EPOCH:
         raise HTTPException(400, "before epoch")
-    if not (0 <= body.round_idx < 6):
-        raise HTTPException(400, "bad round_idx")
     place_ids = _daily_picks(d)
+    if not (0 <= body.round_idx < len(place_ids)):
+        raise HTTPException(400, "bad round_idx")
     place_id = place_ids[body.round_idx]
     p = places.get(place_id)
     if not p:
@@ -276,7 +276,7 @@ def puzzle_guess(d: str, body: GuessIn):
         "true_lon": p["lon"],
         "polygon": places.get_polygon(place_id),
         "round_idx": body.round_idx,
-        "is_last": body.round_idx == 5,
+        "is_last": body.round_idx == len(place_ids) - 1,
         "name_he": p["name_he"],
         "name_en": p["name_en"],
         "description": p.get("description", ""),
@@ -350,7 +350,7 @@ def me_today(request: Request, hint: str | None = None):
             gs["image_url"] = p.get("image_url", "")
             gs["source_url"] = p.get("source_url", "")
     owner = next((pl for pl in players if pl["id"] == g["player_id"]), players[0])
-    done = len(guesses) >= 6
+    done = len(guesses) >= len(_daily_picks(d))
     payload = {
         "player_id": g["player_id"],
         "name": owner["name"],
@@ -398,7 +398,7 @@ def today_me(player_id: str, request: Request):
             gs["description"] = p.get("description", "")
             gs["image_url"] = p.get("image_url", "")
             gs["source_url"] = p.get("source_url", "")
-    done = len(guesses) >= 6
+    done = len(guesses) >= len(_daily_picks(date))
     payload = {
         "game_id": g["id"],
         "total_score": g["total_score"],
@@ -414,11 +414,10 @@ def today_me(player_id: str, request: Request):
 
 @app.post("/api/today/guess")
 def today_guess(body: GuessIn, request: Request):
-    if not (0 <= body.round_idx < 6):
-        raise HTTPException(400, "bad round_idx")
-
     date = _il_today_iso()
     place_ids = _daily_picks(date)
+    if not (0 <= body.round_idx < len(place_ids)):
+        raise HTTPException(400, "bad round_idx")
     place_id = place_ids[body.round_idx]
     p = places.get(place_id)
     if not p:
@@ -490,8 +489,8 @@ def today_guess(body: GuessIn, request: Request):
     total = sum(r["round_score"] for r in rows)
     supa.update("games", {"id": f"eq.{game_id}"}, {"total_score": total}, jwt=user_jwt)
 
-    # Compute rank + streak only on the last guess — wasted work on rounds 0-4.
-    rank_info = _rank_and_percentile(date, total) if body.round_idx == 5 else None
+    # Compute rank + streak only on the last guess — wasted work on earlier rounds.
+    rank_info = _rank_and_percentile(date, total) if body.round_idx == len(place_ids) - 1 else None
     if rank_info is not None:
         rank_info["streak"] = _current_streak([body.player_id], date)
 
@@ -505,7 +504,7 @@ def today_guess(body: GuessIn, request: Request):
         "true_lon": p["lon"],
         "polygon": places.get_polygon(place_id),
         "round_idx": body.round_idx,
-        "is_last": body.round_idx == 5,
+        "is_last": body.round_idx == len(place_ids) - 1,
         "game_id": game_id,
         "name_he": p["name_he"],
         "name_en": p["name_en"],

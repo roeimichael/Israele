@@ -30,17 +30,20 @@ def _load() -> dict[int, dict]:
 
 
 def _category(place_type: str) -> tuple[str, float]:
-    """Max round score = base × mult. Composition sums to 1000:
-      2 × city       (1.0×) →  2 × 100 = 200
-      2 × settlement (1.5×) →  2 × 150 = 300
+    """Max round score = base × mult. 5 rounds/day sum to 1000:
+      1 × city       (1.0×) →  1 × 100 = 100
+      2 × settlement (2.0×) →  2 × 200 = 400
       2 × landmark   (2.5×) →  2 × 250 = 500
                                        ───────
                                          1000
+    The 1·2·2 composition is enforced by the pick_or_create_daily RPC;
+    pre-switch archive days keep their stored 2·2·2 picks (max 1100), which
+    the client renders honestly via a computed per-day max.
     """
     if place_type == "city":
         return ("city", 1.0)
     if place_type == "village":
-        return ("settlement", 1.5)
+        return ("settlement", 2.0)
     return ("landmark", 2.5)
 
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he" dir="rtl" class="sl-theme-dark">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -59,7 +59,15 @@
 <link rel="preconnect" href="https://unpkg.com" crossorigin />
 <link rel="preload" as="fetch" href="/api/today" crossorigin />
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+
+<!-- Shoelace web components (CDN, no build). Autoloader lazy-registers each
+     <sl-*> the moment it appears in the DOM, so we adopt them incrementally. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/dark.css" />
+<script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+
 <link href="/static/style.css?v=33" rel="stylesheet" />
+<link href="/static/style-v2.css?v=7" rel="stylesheet" />
 </head>
 <body>
 <!-- splash: covers everything until init resolves -->
@@ -87,28 +95,42 @@
     <button id="btn-signout" data-i18n-attr="title" data-i18n="btn_signout_tooltip" data-i18n-text="btn_signout" title="התנתק מהחשבון">התנתק</button>
   </div>
   <div id="toolbar">
-    <button class="tb-btn tb-burger" id="btn-menu" aria-label="Menu" aria-expanded="false">☰</button>
-    <div class="tb-items">
-      <button class="tb-btn" id="btn-help" data-i18n-attr="title" data-i18n="btn_help_tooltip" title="איך משחקים">?</button>
-      <button class="tb-btn hidden" id="btn-stats" data-i18n-attr="title" data-i18n="btn_stats_tooltip" title="סטטיסטיקות">📊</button>
-      <button class="tb-btn" id="btn-lang" title="עברית / English">EN</button>
-      <button class="tb-btn" id="btn-sound" data-i18n-attr="title" data-i18n="btn_sound_tooltip" title="צליל">🔊</button>
-      <button class="tb-btn" id="btn-confirm-tap" data-i18n-attr="title" data-i18n="btn_confirm_tap_tooltip" title="אישור לחיצה">👆</button>
+    <button class="tb-btn tb-burger" id="btn-menu" data-i18n-attr="aria-label" data-i18n="set_title" aria-label="הגדרות" aria-haspopup="true" aria-expanded="false">☰</button>
+    <div class="tb-items" id="settings-menu" role="menu" aria-label="הגדרות">
+      <div class="set-row">
+        <label class="set-label" for="sw-sound" data-i18n="set_sound">צליל</label>
+        <sl-switch id="sw-sound"></sl-switch>
+      </div>
+      <div class="set-row">
+        <label class="set-label" for="sw-tap" data-i18n="set_tap">אישור לחיצה</label>
+        <sl-switch id="sw-tap"></sl-switch>
+      </div>
+      <button class="set-action" id="btn-lang" role="menuitem" title="עברית / English">
+        <span class="set-label" data-i18n="set_lang">שפה</span>
+        <span class="set-value">EN</span>
+      </button>
+      <div class="set-divider" role="separator"></div>
+      <button class="set-action" id="btn-help" role="menuitem" data-i18n-attr="title" data-i18n="btn_help_tooltip" title="איך משחקים">
+        <span class="set-ico" aria-hidden="true">❓</span>
+        <span class="set-label" data-i18n="set_howto">איך משחקים</span>
+      </button>
+      <button class="set-action hidden" id="btn-stats" role="menuitem" data-i18n-attr="title" data-i18n="btn_stats_tooltip" title="סטטיסטיקות">
+        <span class="set-ico" aria-hidden="true">📊</span>
+        <span class="set-label" data-i18n="set_stats">סטטיסטיקות</span>
+      </button>
     </div>
   </div>
 </div>
 
 <div id="hud" class="hidden">
-  <div id="round-info">
-    <span id="day-num"></span>
-    <span id="round-num" class="progress-dots"></span>
-    <span id="round-mult"></span>
-    <span id="round-score"></span>
-  </div>
   <div id="prompt">
     <span data-i18n="prompt_where">איפה</span> <span id="place-name-he"></span><span data-i18n="where_q">?</span>
   </div>
-  <div id="place-type" class="place-tag"></div>
+  <div id="round-info">
+    <span id="round-score"></span>
+    <span id="round-num" class="progress-dots"></span>
+    <div id="place-type" class="place-tag"></div>
+  </div>
 </div>
 
 <div id="confirm-guess" class="hidden">
@@ -143,7 +165,7 @@
       <div class="mult-row m2">
         <i data-lucide="house" class="mult-ico"></i>
         <span class="mult-text" data-i18n="legend_settlements">2 יישובים</span>
-        <span class="mult-bubble">×1.5</span>
+        <span class="mult-bubble">×2</span>
       </div>
       <div class="mult-row m3">
         <i data-lucide="mountain" class="mult-ico"></i>
@@ -181,12 +203,16 @@
 
   <!-- reveal card -->
   <div id="reveal-card" class="card hidden">
-    <h2 id="reveal-score"></h2>
-    <div id="reveal-breakdown"></div>
-    <div id="reveal-place"></div>
-    <div id="reveal-desc"></div>
-    <a id="reveal-source" class="reveal-source hidden" target="_blank" rel="noopener" data-i18n="info_link">מידע נוסף ↗</a>
-    <div id="reveal-dist"></div>
+    <div class="reveal-top">
+      <span id="reveal-place"></span>
+      <h2 id="reveal-score"></h2>
+    </div>
+    <div class="reveal-meta">
+      <span id="reveal-dist"></span>
+      <span id="reveal-breakdown"></span>
+      <a id="reveal-source" class="reveal-source hidden" target="_blank" rel="noopener" data-i18n="info_link">מידע נוסף ↗</a>
+    </div>
+    <div id="reveal-desc" class="hidden"></div>
     <button id="btn-next" data-i18n="btn_next">הבא ←</button>
   </div>
 
@@ -246,6 +272,7 @@
   <!-- leaderboard modal -->
   <div id="lb-card" class="card hidden">
     <h2 data-i18n="lb_title">לוח יומי</h2>
+    <div id="lb-stats" class="hidden"></div>
     <div id="lb-list"></div>
     <button id="btn-lb-close" data-i18n="btn_close">סגור</button>
   </div>
@@ -290,7 +317,7 @@
         <p data-i18n-html="howto_scoring_p">ככל שלחצתם <b>קרוב יותר</b>, יותר נקודות. עד 250 לסבב בודד, עד <b>1000</b> בכל יום.</p>
         <div class="mult-legend small">
           <div><span class="m1">×1</span> <span data-i18n="legend_cities">2 ערים</span></div>
-          <div><span class="m2">×1.5</span> <span data-i18n="legend_settlements">2 יישובים</span></div>
+          <div><span class="m2">×2</span> <span data-i18n="legend_settlements">2 יישובים</span></div>
           <div><span class="m3">×2.5</span> <span data-i18n="legend_landmarks">2 אתרים</span></div>
         </div>
       </div>

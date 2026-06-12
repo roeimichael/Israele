@@ -6,3 +6,8 @@ venv/
 .DS_Store
 data/raw/
 data/seed_chunks/
+
+.preview-shots/
+
+# local data backups
+data/*.bak

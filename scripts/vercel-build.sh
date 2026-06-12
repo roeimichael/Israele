@@ -4,6 +4,7 @@ mkdir -p public/docs
 cp frontend/index.html public/index.html
 cp frontend/app.js public/app.js
 cp frontend/style.css public/style.css
+cp frontend/style-v2.css public/style-v2.css
 cp frontend/manifest.json public/manifest.json
 cp frontend/privacy.html public/privacy.html
 cp frontend/terms.html public/terms.html

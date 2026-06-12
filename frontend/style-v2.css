@@ -1,0 +1,381 @@
+/* ============================================================
+   IsraelE — v2 MOBILE LAYER  (additive; loaded AFTER style.css)
+   Goals: brand-matched Shoelace components, bigger tap targets,
+   safe-area insets, glassy depth, smoother motion, a11y.
+   Everything here is additive + reversible — no game logic touched.
+   ============================================================ */
+
+/* ─── Shoelace tokens → Israel blue ───────────────────────────
+   Map the sl primary scale to the brand so any dropped-in
+   <sl-button>/<sl-dialog>/<sl-switch>/<sl-alert> matches the app
+   with zero per-instance styling. Also align radius + font. */
+:root,
+.sl-theme-dark {
+  --sl-color-primary-50:  #eef3ff;
+  --sl-color-primary-100: #d8e3ff;
+  --sl-color-primary-200: #b3c8ff;
+  --sl-color-primary-300: #88a6f7;
+  --sl-color-primary-400: #4d7df0;   /* --il-blue-light */
+  --sl-color-primary-500: #2a5fe0;
+  --sl-color-primary-600: #0038b8;   /* --il-blue (brand) */
+  --sl-color-primary-700: #002e98;
+  --sl-color-primary-800: #042575;
+  --sl-color-primary-900: #07205c;
+  --sl-color-primary-950: #050f33;
+
+  --sl-border-radius-small: 8px;
+  --sl-border-radius-medium: 12px;
+  --sl-border-radius-large: 16px;
+  --sl-border-radius-x-large: 22px;
+
+  --sl-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  --sl-focus-ring-color: var(--il-blue-light);
+
+  /* glassy surfaces for sl panels (dialog/drawer/menu) */
+  --sl-panel-background-color: rgba(20, 26, 38, 0.92);
+  --sl-panel-border-color: rgba(77, 125, 240, 0.28);
+  --sl-overlay-background-color: rgba(8, 10, 14, 0.6);
+}
+
+/* ─── Safe-area insets (notch / home indicator) ───────────────
+   So nothing tucks under the iPhone notch or the home bar. */
+#topbar    { padding-top: env(safe-area-inset-top, 0px); }
+#hud       { margin-top: env(safe-area-inset-top, 0px); }
+#confirm-guess { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+#toast     { bottom: calc(48px + env(safe-area-inset-bottom, 0px)); }
+
+/* ─── Tap targets: WCAG 2.5.5 — >=44px on touch ───────────────
+   Mobile is the primary target; cramped 30px chrome buttons are
+   the #1 mobile friction. Grow the hit area without redesigning. */
+@media (max-width: 768px) {
+  .tb-btn {
+    min-width: 44px; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .tb-burger { min-width: 48px; min-height: 48px; font-size: 22px; }
+
+  #user-chip button { min-width: 44px; min-height: 44px; }
+
+  .btn-secondary,
+  .btn-google,
+  #btn-start,
+  #btn-confirm-guess,
+  .card > button,
+  #howto-nav button {
+    min-height: 48px;
+  }
+
+  .btn-cta { min-height: 52px; }
+
+  .cal-cell { min-height: 42px; }
+
+  /* easier-to-hit modal close + nav */
+  .cal-nav { min-width: 44px; min-height: 44px; }
+  .link-btn { padding: 10px 8px; }
+}
+
+/* ─── Glassy depth refinement ─────────────────────────────────
+   Slightly deeper blur + a soft inner highlight = more "frosted
+   glass", less flat panel. Subtle on purpose. */
+.card {
+  backdrop-filter: blur(26px) saturate(1.5);
+  -webkit-backdrop-filter: blur(26px) saturate(1.5);
+}
+#hud, .place-tag {
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+
+/* ─── Motion: smoother, springier presses ─────────────────────
+   Single shared easing so every interactive control feels
+   consistent. Honors reduced-motion below. */
+button,
+.btn-secondary,
+.btn-cta,
+.tb-btn,
+.reveal-source,
+sl-button::part(base) {
+  transition: transform .14s cubic-bezier(.34, 1.56, .64, 1),
+              box-shadow .2s ease, background .2s ease, border-color .2s ease;
+}
+
+/* ─── Focus: clearer keyboard ring (a11y) ─────────────────────
+   Higher-contrast, offset ring so it reads on the glassy bg. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+.tb-btn:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--il-blue-light);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(77, 125, 240, 0.25);
+}
+
+/* ─── Respect reduced-motion everywhere we added motion ──────── */
+@media (prefers-reduced-motion: reduce) {
+  button, .btn-secondary, .btn-cta, .tb-btn, .reveal-source { transition: none; }
+}
+
+/* ============================================================
+   PHASE 2
+   ============================================================ */
+
+/* ─── Bottom-sheet modals (mobile) ────────────────────────────
+   Center-floating dialogs are awkward on phones. Slide the true
+   modals up from the bottom edge: full-width, rounded top, grab
+   handle, thumb-reachable close. Start/end/reveal keep their own
+   layouts (different ids, untouched). */
+@media (max-width: 600px) {
+  #overlay:has(#lb-card:not(.hidden)),
+  #overlay:has(#history-card:not(.hidden)),
+  #overlay:has(#stats-card:not(.hidden)),
+  #overlay:has(#archive-card:not(.hidden)),
+  #overlay:has(#howto-card:not(.hidden)),
+  #overlay:has(#name-card:not(.hidden)) {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+
+  #lb-card, #history-card, #stats-card,
+  #archive-card, #howto-card, #name-card {
+    width: 100%; max-width: 100%; min-width: 0;
+    border-radius: 24px 24px 0 0;
+    padding: 30px 22px calc(24px + env(safe-area-inset-bottom, 0px));
+    max-height: 90vh; overflow: hidden auto;
+    animation: sheet-up .32s cubic-bezier(.22, .61, .36, 1);
+  }
+
+  /* repurpose the .card top-accent line into a centered grab handle */
+  #lb-card::after, #history-card::after, #stats-card::after,
+  #archive-card::after, #howto-card::after, #name-card::after {
+    top: 9px; left: 50%; right: auto; transform: translateX(-50%);
+    width: 42px; height: 5px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.3);
+    opacity: 1;
+  }
+
+  /* close action spans the sheet, easy thumb hit */
+  #btn-lb-close, #btn-history-close,
+  #btn-stats-close, #btn-archive-close { width: 100%; }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ─── Leaderboard row polish (podium pop) ─────────────────────
+   Roomier rows + a subtle medal-tinted gradient on the top three. */
+.lb-row {
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin: 6px 0;
+}
+.lb-row b { font-size: 16px; }
+.lb-row.lb-top1 {
+  background: linear-gradient(100deg, rgba(255, 196, 77, 0.16), rgba(255, 255, 255, 0.03));
+  border-color: rgba(255, 196, 77, 0.42);
+}
+.lb-row.lb-top2 {
+  background: linear-gradient(100deg, rgba(203, 213, 224, 0.14), rgba(255, 255, 255, 0.03));
+  border-color: rgba(203, 213, 224, 0.36);
+}
+.lb-row.lb-top3 {
+  background: linear-gradient(100deg, rgba(205, 127, 50, 0.15), rgba(255, 255, 255, 0.03));
+  border-color: rgba(205, 127, 50, 0.42);
+}
+
+/* ─── End-card: per-round result chips ────────────────────────
+   Replaces the run-on "47🐪 12🌵 …" string with an aligned grid. */
+#emoji-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 14px 0 4px;
+}
+.round-chip {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 4px; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.round-chip .rc-emoji { font-size: 19px; line-height: 1; }
+.round-chip .rc-score { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.round-chip.tier-good { background: rgba(72, 187, 120, 0.13); border-color: rgba(72, 187, 120, 0.4); }
+.round-chip.tier-good .rc-score { color: #7ee2a8; }
+.round-chip.tier-mid  { background: rgba(237, 175, 65, 0.12); border-color: rgba(237, 175, 65, 0.4); }
+.round-chip.tier-mid .rc-score { color: #fbcd6a; }
+.round-chip.tier-low  { background: rgba(229, 62, 62, 0.11); border-color: rgba(229, 62, 62, 0.4); }
+.round-chip.tier-low .rc-score { color: #ff8585; }
+
+/* ─── Shoelace toast stack → bottom-center, above thumb zone ─── */
+.sl-toast-stack {
+  left: 50%; right: auto; top: auto;
+  transform: translateX(-50%);
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  width: min(92vw, 440px);
+}
+.sl-toast-stack sl-alert { --sl-panel-background-color: rgba(20, 26, 38, 0.96); }
+
+/* ─── Settings menu: burger dropdown at ALL widths ────────────
+   One consistent, mobile-first pattern. Sound + tap become real
+   Shoelace switches (labeled, keyboard + screen-reader friendly);
+   language / how-to / stats are menu actions. */
+.tb-burger {
+  display: inline-flex !important;
+  align-items: center; justify-content: center;
+}
+#toolbar .tb-items {
+  display: none;
+  position: absolute; top: calc(100% + 8px); inset-inline-end: 0;
+  flex-direction: column; gap: 2px; min-width: 232px;
+  padding: 8px;
+  background: rgba(16, 22, 34, 0.97);
+  border: 1px solid rgba(77, 125, 240, 0.28);
+  border-radius: 16px;
+  backdrop-filter: blur(22px) saturate(1.4);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  box-shadow: 0 20px 54px -14px rgba(0, 0, 0, 0.75);
+  z-index: 30;
+  animation: menu-pop .16s ease-out;
+}
+#toolbar.open .tb-items { display: flex; }
+@keyframes menu-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.set-row, .set-action {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  padding: 11px 12px; min-height: 46px; margin: 0;
+  border-radius: 10px; border: none; background: transparent;
+  color: var(--text); font-size: 15px; font-weight: 500;
+  text-align: start; cursor: default;
+  box-shadow: none; transition: background .15s;
+}
+.set-action { cursor: pointer; }
+.set-row:hover { background: rgba(255, 255, 255, 0.03); }
+.set-action:hover { background: rgba(77, 125, 240, 0.16); transform: none; box-shadow: none; }
+.set-action:active { transform: scale(.99); }
+.set-label { flex: 1; color: var(--text); }
+.set-action .set-ico { font-size: 18px; line-height: 1; width: 22px; text-align: center; }
+.set-value {
+  font-size: 13px; font-weight: 700; color: var(--il-blue-light);
+  padding: 3px 11px; border-radius: 999px;
+  background: rgba(77, 125, 240, 0.16);
+  border: 1px solid rgba(77, 125, 240, 0.4);
+}
+.set-divider { height: 1px; background: rgba(255, 255, 255, 0.08); margin: 6px 4px; }
+
+/* brand the switches to Israel blue + comfortable hit size */
+#settings-menu sl-switch {
+  --sl-color-primary-600: var(--il-blue);
+  --sl-input-height-medium: 26px;
+}
+
+/* ─── Modal scroll-lock (a11y) ────────────────────────────────
+   Freeze the background while a dialog/sheet is open. */
+body.modal-open { overflow: hidden; }
+
+/* ============================================================
+   PHASE 3 — gameplay layout cleanup (per design feedback)
+   ============================================================ */
+
+/* ─── Compact map attribution (the wide "Tiles © Esri …" bar
+   becomes a small ⓘ that expands on tap) ─── */
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  min-height: 24px;
+  background: rgba(16, 22, 34, 0.6);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) {
+  opacity: 0.55;
+}
+.maplibregl-ctrl-attrib-button { background-color: rgba(255, 255, 255, 0.7); }
+.maplibregl-ctrl-top-right { z-index: 4; }   /* under the topbar/menu */
+
+/* ─── HUD: prompt on top, stats underneath ────────────────────
+   "Where is X?" leads; below it a single row of score · dots ·
+   type-pill (with the ×multiplier folded in). No day number here
+   (that lives on the start screen). */
+#hud #prompt { font-size: 22px; font-weight: 700; margin: 0 0 10px; }
+#hud #round-info {
+  display: flex; align-items: center; justify-content: center;
+  gap: 14px; margin: 0; flex-wrap: wrap;
+}
+#hud #round-score {
+  font-size: 20px; font-weight: 800; color: var(--il-blue-light);
+}
+#hud #round-score::before { font-size: 13px; margin-inline-end: 5px; opacity: 0.65; }
+.place-tag .pt-mult {
+  font-weight: 800; margin-inline-start: 7px; padding-inline-start: 7px;
+  border-inline-start: 1px solid currentColor; opacity: 0.9;
+}
+
+/* full-width bottom panel on phones, styled like the other sheets */
+@media (max-width: 600px) {
+  #hud {
+    top: auto; bottom: 0; left: 0; right: 0;
+    transform: none; margin: 0;
+    width: 100%; max-width: 100%;
+    border-radius: 22px 22px 0 0;
+    padding: 16px 18px calc(16px + env(safe-area-inset-bottom, 0px));
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  #hud #prompt { font-size: 23px; margin: 0; }
+  /* keep the confirm-guess button clear of the bottom HUD panel */
+  #confirm-guess { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ─── Reveal card: mirror the HUD panel ───────────────────────
+   Same width/padding/feel as "Where is X?" so the swap is smooth.
+   Place + score share a top row; distance / breakdown / more-info
+   sit in one horizontal meta row instead of a right-stacked column. */
+#reveal-desc { display: none; }   /* full description lives on the end card */
+
+.reveal-top {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+}
+#reveal-card #reveal-place { font-size: 19px; margin: 0; font-weight: 700; }
+#reveal-card #reveal-score { font-size: 30px; margin: 0; line-height: 1; }
+#reveal-card #reveal-breakdown { margin: 0; }
+.reveal-meta {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 6px 12px; margin: 9px 0 12px; font-size: 13px;
+}
+.reveal-meta #reveal-dist { margin: 0; opacity: 0.75; }
+.reveal-meta .reveal-source { margin: 0; }
+
+@media (max-width: 600px) {
+  #overlay:has(#reveal-card:not(.hidden)) {
+    align-items: flex-end; justify-content: stretch; padding: 0;
+  }
+  #reveal-card {
+    width: 100%; max-width: 100%; min-width: 0;
+    border-radius: 22px 22px 0 0;
+    padding: 16px 18px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ─── Daily-board personal stats (moved off the end card) ─────
+   Your score / rank / vs-avg / streak as compact chips. */
+#lb-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 8px;
+  margin: 2px 0 14px;
+}
+.lbs-chip {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 6px; border-radius: 12px;
+  background: rgba(77, 125, 240, 0.1);
+  border: 1px solid rgba(77, 125, 240, 0.26);
+}
+.lbs-chip b {
+  font-size: 18px; color: var(--il-blue-light);
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+.lbs-chip span { font-size: 10px; opacity: 0.7; text-align: center; }
+.lbs-chip b.delta-pos { color: #7ee2a8; }
+.lbs-chip b.delta-neg { color: #ff8585; }
