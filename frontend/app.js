@@ -1174,7 +1174,9 @@ function spawnMagenDavid(lngLat, color = "#0038b8", maxScreenRadius = 80, durati
   const start = performance.now();
   const initialR = 28;                          // start big enough to be seen instantly
   function tick(now) {
-    const t = Math.min(1, (now - start) / duration);
+    // clamp low end too: the first rAF timestamp can be marginally before `start`,
+    // which would make t<0 → alpha=(1-t)^4>1 → maplibre rejects opacity>1 (console error).
+    const t = Math.min(1, Math.max(0, (now - start) / duration));
     const e = 1 - Math.pow(1 - t, 4);           // easeOutQuart — snappier than cubic
     const r = initialR + (maxScreenRadius - initialR) * e;
     const rot = rotateDeg * e * Math.PI / 180;
