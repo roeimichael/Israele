@@ -93,6 +93,7 @@ const STRINGS = {
     score_save_fail: "שגיאה בשמירת הניקוד",
     puzzle_load_fail: "נכשלה טעינת הפאזל. נסו שוב.",
     stats_load_fail: "טעינת סטטיסטיקות נכשלה",
+    lb_load_fail: "נכשלה הטעינה. נסו שוב.",
     sign_in_for_history: "התחברו כדי לראות היסטוריה",
     supabase_not_configured: "חיבור Supabase לא הוגדר",
     confirm_fresh_guest: "יישחק לך פאזל חדש כאורח. ההיסטוריה המקומית תאופס. להמשיך?",
@@ -218,6 +219,7 @@ const STRINGS = {
     score_save_fail: "Score save failed",
     puzzle_load_fail: "Failed to load puzzle. Try again.",
     stats_load_fail: "Stats load failed",
+    lb_load_fail: "Couldn't load. Try again.",
     sign_in_for_history: "Sign in to see your history",
     supabase_not_configured: "Supabase not configured",
     confirm_fresh_guest: "A fresh guest puzzle will start. Local history will be wiped. Continue?",
@@ -1603,19 +1605,23 @@ function onShareWhatsApp() {
 }
 
 async function openLeaderboard() {
-  const url = `/api/leaderboard?date=${encodeURIComponent(state.date)}&player_id=${encodeURIComponent(playerId)}`;
-  const lb = await fetch(url).then((r) => r.json());
   const list = document.getElementById("lb-list");
-  const rows = (lb.top || []).map((row) => _lbRow(row));
-  if (lb.me) {
-    rows.push('<div class="lb-gap">···</div>');
-    rows.push(_lbRow(lb.me));
+  list.innerHTML = "<p>…</p>";
+  openModal("lb-card");                 // open first so a failure shows in-modal, never silently
+  try {
+    const url = `/api/leaderboard?date=${encodeURIComponent(state.date)}&player_id=${encodeURIComponent(playerId)}`;
+    const lb = await fetchJSON(url);    // throws on !ok + 15s timeout
+    const rows = (lb.top || []).map((row) => _lbRow(row));
+    if (lb.me) {
+      rows.push('<div class="lb-gap">···</div>');
+      rows.push(_lbRow(lb.me));
+    }
+    list.innerHTML = rows.length ? rows.join("") : `<p>${T("no_lb_yet")}</p>`;
+    renderLbStats();
+  } catch (e) {
+    console.warn("leaderboard load failed", e);
+    list.innerHTML = `<p>${T("lb_load_fail")}</p>`;
   }
-  list.innerHTML = rows.length
-    ? rows.join("")
-    : `<p>${T("no_lb_yet")}</p>`;
-  renderLbStats();
-  openModal("lb-card");
 }
 
 function _lbRow(row) {
@@ -1629,14 +1635,18 @@ function _lbRow(row) {
 
 async function openHistory() {
   if (!session) { flashToast(T("sign_in_for_history")); return; }
-  const h = await fetch("/api/me/history", {
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  }).then((r) => r.json());
   const list = document.getElementById("history-list");
-  list.innerHTML = h.games && h.games.length
-    ? h.games.map((g) => `<div class="hist-row"><a href="/?date=${escapeHtml(g.puzzle_date)}">${escapeHtml(g.puzzle_date)}</a><b>${g.total_score}</b></div>`).join("")
-    : `<p>${T("no_games_yet")}</p>`;
+  list.innerHTML = "<p>…</p>";
   openModal("history-card");
+  try {
+    const h = await fetchJSON("/api/me/history", authHeaders());
+    list.innerHTML = h.games && h.games.length
+      ? h.games.map((g) => `<div class="hist-row"><a href="/?date=${escapeHtml(g.puzzle_date)}">${escapeHtml(g.puzzle_date)}</a><b>${g.total_score}</b></div>`).join("")
+      : `<p>${T("no_games_yet")}</p>`;
+  } catch (e) {
+    console.warn("history load failed", e);
+    list.innerHTML = `<p>${T("lb_load_fail")}</p>`;
+  }
 }
 
 // ─── UI utils ───────────────────────────────────────────────────────────────
@@ -1837,7 +1847,7 @@ async function openStats() {
 }
 
 // ─── Archive calendar ──────────────────────────────────────────────────────
-const EPOCH_ISO = "2026-05-12";
+const EPOCH_ISO = "2026-06-14";   // launch day #1; archive calendar starts here (matches backend EPOCH)
 
 function _ilTodayIso() {
   // YYYY-MM-DD in Asia/Jerusalem regardless of viewer's TZ.
