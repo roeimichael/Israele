@@ -11,6 +11,8 @@
   "theme_color": "#0a1424",
   "orientation": "any",
   "icons": [
-    { "src": "/docs/flag.png", "sizes": "any", "type": "image/png", "purpose": "any" }
+    { "src": "/docs/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/docs/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/docs/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

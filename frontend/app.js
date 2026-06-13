@@ -94,6 +94,10 @@ const STRINGS = {
     puzzle_load_fail: "נכשלה טעינת הפאזל. נסו שוב.",
     stats_load_fail: "טעינת סטטיסטיקות נכשלה",
     lb_load_fail: "נכשלה הטעינה. נסו שוב.",
+    a2hs_title: "הוסיפו למסך הבית",
+    a2hs_sub: "חידה יומית במרחק נגיעה",
+    a2hs_install: "התקנה",
+    a2hs_ios: "שיתוף ← הוסף למסך הבית",
     sign_in_for_history: "התחברו כדי לראות היסטוריה",
     supabase_not_configured: "חיבור Supabase לא הוגדר",
     confirm_fresh_guest: "יישחק לך פאזל חדש כאורח. ההיסטוריה המקומית תאופס. להמשיך?",
@@ -220,6 +224,10 @@ const STRINGS = {
     puzzle_load_fail: "Failed to load puzzle. Try again.",
     stats_load_fail: "Stats load failed",
     lb_load_fail: "Couldn't load. Try again.",
+    a2hs_title: "Add to home screen",
+    a2hs_sub: "The daily puzzle, one tap away",
+    a2hs_install: "Install",
+    a2hs_ios: "Share → Add to Home Screen",
     sign_in_for_history: "Sign in to see your history",
     supabase_not_configured: "Supabase not configured",
     confirm_fresh_guest: "A fresh guest puzzle will start. Local history will be wiped. Continue?",
@@ -562,6 +570,8 @@ async function init() {
     swTap.addEventListener("sl-change", () => setConfirmTap(swTap.checked));
   }
   document.getElementById("btn-confirm-guess").onclick = onConfirmGuess;
+  document.getElementById("a2hs-install")?.addEventListener("click", _installA2HS);
+  document.getElementById("a2hs-dismiss")?.addEventListener("click", () => _dismissA2HS(true));
   wireToolbarMenu();
   wireModalDismiss();
   document.getElementById("btn-lang").onclick = toggleLang;
@@ -1466,6 +1476,8 @@ function showEnd(restored) {
   } else {
     countUp(document.getElementById("final-score"), 0, state.totalScore, 1500);
   }
+  // Engaged moment: nudge install once the player has finished a game.
+  if (!state.archive) setTimeout(maybeShowA2HS, 1400);
 }
 
 // Daily-board personal summary: your score, rank, gap-vs-average, streak.
@@ -2075,6 +2087,45 @@ function authHeaders() {
 }
 
 // ─── Fetch + spinner ────────────────────────────────────────────────────────
+// ─── Add-to-home-screen nudge (PWA habit) ───────────────────────────────────
+// Android fires beforeinstallprompt (we stash it + show our own button); iOS
+// Safari has no programmatic install, so we show a manual "Share → Add" hint.
+let _deferredA2HS = null;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); _deferredA2HS = e; });
+window.addEventListener("appinstalled", () => {
+  localStorage.setItem("israelle_a2hs", "done");
+  document.getElementById("a2hs")?.classList.add("hidden");
+});
+function _a2hsStandalone() {
+  return window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+function _a2hsIsIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+function maybeShowA2HS() {
+  if (_a2hsStandalone()) return;                                  // already installed
+  if (localStorage.getItem("israelle_a2hs") === "done") return;   // installed/dismissed before
+  const ios = _a2hsIsIOS();
+  if (!_deferredA2HS && !ios) return;                             // Android w/o prompt support → skip
+  const el = document.getElementById("a2hs");
+  if (!el || !el.classList.contains("hidden")) return;
+  if (ios) {                                                       // swap install button for a hint
+    document.getElementById("a2hs-install")?.classList.add("hidden");
+    const sub = document.getElementById("a2hs-sub");
+    if (sub) sub.textContent = T("a2hs_ios");
+  }
+  el.classList.remove("hidden");
+}
+function _dismissA2HS(remember) {
+  document.getElementById("a2hs")?.classList.add("hidden");
+  if (remember) localStorage.setItem("israelle_a2hs", "done");
+}
+async function _installA2HS() {
+  if (!_deferredA2HS) return;
+  _deferredA2HS.prompt();
+  try { await _deferredA2HS.userChoice; } catch {}
+  _deferredA2HS = null;
+  _dismissA2HS(true);
+}
+
 async function fetchJSON(url, opts = {}, timeoutMs = 15000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
