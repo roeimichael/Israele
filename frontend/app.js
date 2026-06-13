@@ -970,6 +970,25 @@ async function onConfirmGuess() {
   await submitGuess(lng, lat);
 }
 
+// The guess POST is the one network call that must not silently brick the game.
+// Mobile networks blip and the backend can cold-start, so retry a few times with
+// backoff before giving up. A 4xx (e.g. 409 already-played) is returned as-is —
+// it won't change on retry.
+async function postGuessWithRetry(url, headers, payload, tries = 4) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
+      if (r.ok) return await r.json();
+      if (r.status >= 400 && r.status < 500) return await r.json();
+      lastErr = new Error("HTTP " + r.status);          // 5xx / cold start → retry
+    } catch (e) { lastErr = e; }                          // network blip → retry
+    if (i < tries - 1) await sleep(500 * (i + 1));
+  }
+  console.warn("[ils] guess failed after retries", lastErr);
+  return { _err: lastErr || new Error("guess request failed") };
+}
+
 async function submitGuess(lng, lat) {
   state.awaitingClick = false;
   document.body.classList.remove("awaiting-click");
@@ -987,11 +1006,7 @@ async function submitGuess(lng, lat) {
   const body = state.archive
     ? { player_id: playerId, round_idx: state.cursor, lat, lon: lng }
     : { player_id: playerId, name: playerName, round_idx: state.cursor, lat, lon: lng };
-  const fetchP = fetch(_guessUrl(), {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  }).then((r) => r.json()).catch((err) => ({ _err: err }));
+  const fetchP = postGuessWithRetry(_guessUrl(), headers, body);
 
   const localTruth = state._idx?.[state.cursor];   // [lat, lon] or undefined
   console.log("[ils] click", { round: state.cursor, fast: !!localTruth, t: Math.round(performance.now()) });
@@ -1014,7 +1029,14 @@ async function submitGuess(lng, lat) {
 
   const res = await fetchP;
   if (res._err || res.detail) {
+    // The POST already retried internally; reaching here means a sustained
+    // outage or a 4xx. Don't brick the round on a dead map — roll back the
+    // reveal and re-arm the click so the player can simply tap again.
     flashToast(res.detail || T("score_save_fail"));
+    clearMarkers();
+    clearPolygon();
+    state.awaitingClick = true;
+    document.body.classList.add("awaiting-click");
     return;
   }
 
