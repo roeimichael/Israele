@@ -136,6 +136,21 @@ def _current_streak(player_ids: list[str], today_iso: str) -> int:
     return n
 
 
+_PID_NS = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # RFC-4122 DNS namespace
+
+
+def _coerce_pid(pid: str) -> str:
+    """players.id is a uuid column. Some clients send a non-uuid id — older
+    builds, or in-app browsers (WhatsApp/Instagram/FB) where crypto.randomUUID
+    is absent so the client fell back to a "p_…" string. Map any non-uuid
+    deterministically onto a stable uuid5 so the player's game just works
+    instead of 500-ing on insert. A valid uuid passes through unchanged."""
+    try:
+        return str(uuid.UUID(str(pid)))
+    except (ValueError, AttributeError, TypeError):
+        return str(uuid.uuid5(_PID_NS, str(pid)))
+
+
 def _require_player_access(player_id: str, request: Request) -> None:
     """Reject reads of another user's data. Guests (auth_user_id NULL) stay
     open — same risk surface as before for that bucket, but signed-in users
@@ -303,6 +318,8 @@ def me_today(request: Request, hint: str | None = None):
     if not auth_user_id:
         raise HTTPException(401, "sign in required")
     d = _il_today_iso()
+    if hint:
+        hint = _coerce_pid(hint)   # match the uuid5 a guest's writes were stored under
     players = supa.select("players", select="id,name", auth_user_id=f"eq.{auth_user_id}")
     if not players and hint:
         # No claimed player yet. Try to claim the guest row the client is on.
@@ -367,6 +384,7 @@ def me_today(request: Request, hint: str | None = None):
 
 @app.get("/api/today/me")
 def today_me(player_id: str, request: Request):
+    player_id = _coerce_pid(player_id)
     _require_player_access(player_id, request)
     date = _il_today_iso()
     games = supa.select(
@@ -415,12 +433,9 @@ def today_me(player_id: str, request: Request):
 
 @app.post("/api/today/guess")
 def today_guess(body: GuessIn, request: Request):
-    # players.id is a uuid column; a malformed id (e.g. a legacy "p_…" from an
-    # in-app browser without crypto.randomUUID) would 500 on insert. Fail clean.
-    try:
-        uuid.UUID(str(body.player_id))
-    except (ValueError, AttributeError, TypeError):
-        raise HTTPException(400, "bad player_id")
+    # Map any non-uuid id (legacy "p_…" from in-app browsers) to a stable uuid5
+    # so the write never 500s on the uuid column. Valid uuids pass through.
+    pid = _coerce_pid(body.player_id)
     date = _il_today_iso()
     place_ids = _daily_picks(date)
     if not (0 <= body.round_idx < len(place_ids)):
@@ -442,7 +457,7 @@ def today_guess(body: GuessIn, request: Request):
 
     # 1) Upsert player. Ignore-duplicates so the row exists, then patch name/auth.
     try:
-        row = {"id": body.player_id, "name": body.name or "אנונימי"}
+        row = {"id": pid, "name": body.name or "אנונימי"}
         if auth_user_id:
             row["auth_user_id"] = auth_user_id
         supa.insert(
@@ -458,12 +473,12 @@ def today_guess(body: GuessIn, request: Request):
     if auth_user_id:
         patch["auth_user_id"] = auth_user_id
     if patch:
-        supa.update("players", {"id": f"eq.{body.player_id}"}, patch, jwt=user_jwt)
+        supa.update("players", {"id": f"eq.{pid}"}, patch, jwt=user_jwt)
 
     # 2) Upsert game row (one per player per day).
     game_row = supa.upsert(
         "games",
-        {"player_id": body.player_id, "puzzle_date": date, "total_score": 0},
+        {"player_id": pid, "puzzle_date": date, "total_score": 0},
         on_conflict="player_id,puzzle_date",
         jwt=user_jwt,
     )
@@ -499,7 +514,7 @@ def today_guess(body: GuessIn, request: Request):
     # Compute rank + streak only on the last guess — wasted work on earlier rounds.
     rank_info = _rank_and_percentile(date, total) if body.round_idx == len(place_ids) - 1 else None
     if rank_info is not None:
-        rank_info["streak"] = _current_streak([body.player_id], date)
+        rank_info["streak"] = _current_streak([pid], date)
 
     out = {
         "distance_km": round(dist, 2),
@@ -551,6 +566,7 @@ def history(request: Request):
 def my_stats(player_id: str, request: Request):
     """Returns games played, current streak, max streak, score histogram.
     Works anonymously for guest players; requires matching JWT for claimed ones."""
+    player_id = _coerce_pid(player_id)
     _require_player_access(player_id, request)
     rows = supa.select(
         "games",
@@ -613,6 +629,8 @@ def my_stats(player_id: str, request: Request):
 @app.get("/api/leaderboard")
 def leaderboard(date: str | None = None, player_id: str | None = None):
     """Top 10 + caller's row when they're outside the top 10."""
+    if player_id:
+        player_id = _coerce_pid(player_id)
     date = date or _il_today_iso()
     rows = supa.select(
         "games",
