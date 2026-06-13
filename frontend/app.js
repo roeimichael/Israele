@@ -1,3 +1,61 @@
+// ─── Diagnostics (opt-in) ────────────────────────────────────────────────────
+// Always-on capture of /api/ calls + JS errors into a small ring buffer. A live
+// overlay appears only with ?debug in the URL, so a stuck phone (no reachable
+// devtools) can be screenshotted to show exactly what failed. pointer-events are
+// disabled on the overlay so it never blocks play. Zero effect on normal users.
+const APP_VERSION = "53";
+const _dbg = { api: [], errors: [] };
+function _dbgPush(arr, item) { arr.push(item); if (arr.length > 10) arr.shift(); }
+(function installDebugCapture() {
+  const origFetch = window.fetch.bind(window);
+  window.fetch = async function (input, init) {
+    const url = (typeof input === "string") ? input : (input && input.url) || String(input);
+    const isApi = /\/api\//.test(url);
+    const path = String(url).replace(/^https?:\/\/[^/]+/, "");
+    const method = (init && init.method) || "GET";
+    const t0 = (window.performance ? Math.round(performance.now()) : 0);
+    try {
+      const r = await origFetch(input, init);
+      if (isApi) {
+        let snip = "";
+        try { snip = (await r.clone().text()).slice(0, 100); } catch (_) {}
+        _dbgPush(_dbg.api, `${r.status} ${method} ${path} ${(window.performance ? Math.round(performance.now()) - t0 : "?")}ms ${snip}`);
+      }
+      return r;
+    } catch (e) {
+      if (isApi) _dbgPush(_dbg.api, `ERR ${method} ${path} :: ${String((e && e.message) || e)}`);
+      throw e;
+    }
+  };
+  window.addEventListener("error", (ev) =>
+    _dbgPush(_dbg.errors, `${ev.message || "error"} @ ${String(ev.filename || "").split("/").pop()}:${ev.lineno}`));
+  window.addEventListener("unhandledrejection", (ev) =>
+    _dbgPush(_dbg.errors, `reject: ${String((ev.reason && ev.reason.message) || ev.reason)}`));
+})();
+function _ilsDebugOverlay() {
+  if (!/[?&]debug/i.test(location.search)) return;
+  let el = document.getElementById("ils-debug");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "ils-debug";
+    el.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;max-height:46vh;overflow:auto;" +
+      "background:rgba(6,10,20,0.93);color:#bfe3ff;font:10px/1.4 monospace;padding:8px;" +
+      "white-space:pre-wrap;word-break:break-all;pointer-events:none;border-bottom:2px solid #4d7df0;";
+    document.body.appendChild(el);
+  }
+  let ls = "ok";
+  try { localStorage.setItem("_t", "1"); localStorage.removeItem("_t"); } catch (_) { ls = "BLOCKED"; }
+  const pid = (typeof playerId !== "undefined" && playerId) ? playerId : "(none)";
+  const standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+  el.textContent =
+    `IsraelE debug v${APP_VERSION}\n` +
+    `pid ${pid}\nstandalone:${standalone} localStorage:${ls} online:${navigator.onLine}\n` +
+    `${navigator.userAgent}\n` +
+    `── API ──\n${_dbg.api.join("\n") || "(none)"}\n` +
+    `── JS errors ──\n${_dbg.errors.join("\n") || "(none)"}`;
+}
+if (/[?&]debug/i.test(location.search)) setInterval(_ilsDebugOverlay, 1000);
+
 // ─── i18n ──────────────────────────────────────────────────────────────────
 const STRINGS = {
   he: {
