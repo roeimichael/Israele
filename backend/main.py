@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import os
+import uuid
 from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -414,6 +415,12 @@ def today_me(player_id: str, request: Request):
 
 @app.post("/api/today/guess")
 def today_guess(body: GuessIn, request: Request):
+    # players.id is a uuid column; a malformed id (e.g. a legacy "p_…" from an
+    # in-app browser without crypto.randomUUID) would 500 on insert. Fail clean.
+    try:
+        uuid.UUID(str(body.player_id))
+    except (ValueError, AttributeError, TypeError):
+        raise HTTPException(400, "bad player_id")
     date = _il_today_iso()
     place_ids = _daily_picks(date)
     if not (0 <= body.round_idx < len(place_ids)):

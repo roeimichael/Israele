@@ -382,6 +382,22 @@ let map;
 let sb;            // supabase client
 let session = null;
 let playerId, playerName;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// RFC-4122 v4. crypto.randomUUID needs a secure context AND a modern engine and
+// is missing in many in-app browsers (WhatsApp/Instagram/FB webviews); fall back
+// to getRandomValues (near-universal), then Math.random as a last resort. Always
+// returns a real UUID so players.id (uuid column) never rejects the insert.
+function uuidv4() {
+  try { if (crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (_) {}
+  const b = new Uint8Array(16);
+  try { crypto.getRandomValues(b); }
+  catch (_) { for (let i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256); }
+  b[6] = (b[6] & 0x0f) | 0x40;   // version 4
+  b[8] = (b[8] & 0x3f) | 0x80;   // variant 10
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0"));
+  return `${h[0]}${h[1]}${h[2]}${h[3]}-${h[4]}${h[5]}-${h[6]}${h[7]}-${h[8]}${h[9]}-${h[10]}${h[11]}${h[12]}${h[13]}${h[14]}${h[15]}`;
+}
 let soundOn = true;
 let confirmTap = false;
 let audioCtx;
@@ -471,10 +487,14 @@ async function init() {
   }
 
   // ----- INSTANT WORK (no awaits, runs before any network) -----
-  // Identity from localStorage — no network needed.
+  // Identity from localStorage — no network needed. players.id is a UUID column,
+  // so the id MUST be a valid UUID; a malformed one makes every guess POST 500
+  // ("score save failed" + stuck round). Regenerate if missing OR not a UUID —
+  // this also self-heals players carrying a legacy "p_…" id (generated in
+  // in-app browsers / non-secure contexts where crypto.randomUUID is absent).
   playerId = localStorage.getItem("israelle_player_id");
-  if (!playerId) {
-    playerId = (crypto.randomUUID ? crypto.randomUUID() : ("p_" + Math.random().toString(36).slice(2)));
+  if (!playerId || !UUID_RE.test(playerId)) {
+    playerId = uuidv4();
     localStorage.setItem("israelle_player_id", playerId);
   }
   playerName = localStorage.getItem("israelle_player_name") || "";
