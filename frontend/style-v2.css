@@ -381,6 +381,10 @@ body.modal-open { overflow: hidden; }
 .lbs-chip b.delta-neg { color: #ff8585; }
 
 /* ─── Add-to-home-screen nudge ─────────────────────────────────────────────── */
+/* While the fixed install banner is up, pad the end card so its last rows
+   (the places list) scroll clear of it instead of hiding behind it. */
+body.a2hs-open #end-card { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+
 .a2hs {
   position: fixed;
   left: 50%;
