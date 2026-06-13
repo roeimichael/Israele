@@ -3,7 +3,7 @@
 // overlay appears only with ?debug in the URL, so a stuck phone (no reachable
 // devtools) can be screenshotted to show exactly what failed. pointer-events are
 // disabled on the overlay so it never blocks play. Zero effect on normal users.
-const APP_VERSION = "53";
+const APP_VERSION = "54";
 const _dbg = { api: [], errors: [] };
 function _dbgPush(arr, item) { arr.push(item); if (arr.length > 10) arr.shift(); }
 (function installDebugCapture() {
@@ -1777,6 +1777,10 @@ function clearPolygon() {
 function showCard(cardId, passThrough = false) {
   const overlay = document.getElementById("overlay");
   for (const c of overlay.querySelectorAll(".card")) c.classList.add("hidden");
+  // The floating top bar (burger) is fixed over the page; on the tall scrollable
+  // end card it scrolls under the burger and overlaps the score chips. Hide it
+  // on the end screen (terminal — no in-game settings needed), keep it elsewhere.
+  document.getElementById("topbar")?.classList.toggle("hidden", cardId === "end-card");
   if (cardId) {
     document.getElementById(cardId).classList.remove("hidden");
     overlay.classList.toggle("pass-through", passThrough);
