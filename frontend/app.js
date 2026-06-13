@@ -3,7 +3,7 @@
 // overlay appears only with ?debug in the URL, so a stuck phone (no reachable
 // devtools) can be screenshotted to show exactly what failed. pointer-events are
 // disabled on the overlay so it never blocks play. Zero effect on normal users.
-const APP_VERSION = "55";
+const APP_VERSION = "56";
 const _dbg = { api: [], errors: [] };
 function _dbgPush(arr, item) { arr.push(item); if (arr.length > 10) arr.shift(); }
 (function installDebugCapture() {
@@ -2197,12 +2197,9 @@ function maybeShowA2HS() {
     if (sub) sub.textContent = T("a2hs_ios");
   }
   el.classList.remove("hidden");
-  // Reserve room so the fixed banner doesn't cover the end card's last rows.
-  document.body.classList.add("a2hs-open");
 }
 function _dismissA2HS(remember) {
   document.getElementById("a2hs")?.classList.add("hidden");
-  document.body.classList.remove("a2hs-open");
   if (remember) localStorage.setItem("israelle_a2hs", "done");
 }
 async function _installA2HS() {

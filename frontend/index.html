@@ -67,7 +67,7 @@
 <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
 
 <link href="/static/style.css?v=33" rel="stylesheet" />
-<link href="/static/style-v2.css?v=10" rel="stylesheet" />
+<link href="/static/style-v2.css?v=11" rel="stylesheet" />
 </head>
 <body>
 <!-- splash: covers everything until init resolves -->
@@ -248,6 +248,16 @@
     <div id="next-cd" class="countdown"><span data-i18n="next_puzzle_in">פאזל הבא בעוד</span> <span id="cd2"></span></div>
     <h3 id="places-title" class="places-title hidden" data-i18n="places_title">המקומות של היום</h3>
     <div id="places-list"></div>
+    <!-- Add-to-home-screen nudge: inline in the end-card flow (never floats over content) -->
+    <div id="a2hs" class="a2hs hidden" role="region" aria-label="הוספה למסך הבית">
+      <img src="/docs/icon-192.png" alt="" class="a2hs-icon" width="40" height="40" />
+      <div class="a2hs-text">
+        <strong data-i18n="a2hs_title">הוסיפו למסך הבית</strong>
+        <span id="a2hs-sub" data-i18n="a2hs_sub">חידה יומית במרחק נגיעה</span>
+      </div>
+      <button id="a2hs-install" class="a2hs-btn" data-i18n="a2hs_install">התקנה</button>
+      <button id="a2hs-dismiss" class="a2hs-x" aria-label="סגירה">✕</button>
+    </div>
     <div class="end-meta">
       <button id="btn-fresh-guest" class="link-btn" data-i18n="btn_fresh_guest">↺ התחל מחדש כאורח חדש</button>
     </div>
@@ -341,20 +351,10 @@
 <div id="spinner" class="hidden"><div class="spinner-ring"></div></div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<!-- Add-to-home-screen nudge: shown once after a game, dismissible -->
-<div id="a2hs" class="a2hs hidden" role="region" aria-label="הוספה למסך הבית">
-  <img src="/docs/icon-192.png" alt="" class="a2hs-icon" width="44" height="44" />
-  <div class="a2hs-text">
-    <strong data-i18n="a2hs_title">הוסיפו למסך הבית</strong>
-    <span id="a2hs-sub" data-i18n="a2hs_sub">חידה יומית במרחק נגיעה</span>
-  </div>
-  <button id="a2hs-install" class="a2hs-btn" data-i18n="a2hs_install">התקנה</button>
-  <button id="a2hs-dismiss" class="a2hs-x" aria-label="סגירה">✕</button>
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/animejs@4/dist/bundles/anime.umd.min.js"></script>
 <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
-<script src="/static/app.js?v=55"></script>
+<script src="/static/app.js?v=56"></script>
 </body>
 </html>
