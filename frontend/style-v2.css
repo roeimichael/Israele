@@ -431,3 +431,163 @@ body.modal-open { overflow: hidden; }
   min-height: 40px;
   min-width: 34px;
 }
+
+/* ============================================================================
+   END-SCREEN DECK — swipeable floating panels (Swiper coverflow)
+   DOM order: archive · leaderboard · score · places. Centered on score.
+   ========================================================================== */
+#end-card.deck-host {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  width: 100%;
+  max-width: 440px;
+  max-height: none;
+  height: auto;
+  overflow: visible;
+}
+#end-card.deck-host::before, #end-card.deck-host::after { display: none !important; }
+
+.end-swiper { width: 100%; padding: 10px 0 4px; overflow: visible; direction: ltr; }
+.end-swiper .swiper-slide {
+  direction: rtl;
+  width: 78%;
+  height: auto;
+  box-sizing: border-box;
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(23,38,63,.96), rgba(13,22,40,.97));
+  border: 1px solid rgba(96,140,230,.22);
+  box-shadow: 0 24px 60px rgba(0,0,0,.55), 0 2px 0 rgba(255,255,255,.04) inset;
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  padding: 20px 20px 18px;
+  min-height: 430px;
+  overflow: hidden;
+}
+.end-swiper .swiper-slide-active {
+  border-color: rgba(120,165,255,.5);
+  box-shadow: 0 28px 70px rgba(0,40,140,.5), 0 0 0 1px rgba(120,165,255,.25) inset;
+}
+
+.panel-label {
+  font-size: 12px; font-weight: 700; letter-spacing: .4px;
+  color: var(--il-blue-light); opacity: .85;
+  text-align: center; margin: 0 0 12px;
+}
+
+/* ---- score (main) panel ---- */
+.score-panel { text-align: center; display: flex; flex-direction: column; }
+.end-eyebrow { font-size: 13px; opacity: .55; margin: 2px 0 0; }
+.end-eyebrow .day-tag { opacity: .8; }
+#end-card .score-panel #final-score {
+  font-size: 76px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;
+  margin: 2px 0 0;
+  background: linear-gradient(180deg, #eaf1ff, var(--il-blue-light));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.score-panel #emoji-strip { justify-content: center; margin: 16px 0 2px; flex-wrap: wrap; display: flex; gap: 8px; }
+
+/* ---- streak flame (Lottie) ---- */
+.streak {
+  display: inline-flex; align-items: center; gap: 12px;
+  margin: 16px auto 2px; padding: 6px 18px 6px 8px; border-radius: 999px;
+  background: radial-gradient(120% 150% at 20% 100%, rgba(255,120,30,.20), rgba(255,60,60,.05) 70%, transparent);
+  border: 1px solid rgba(255,150,60,.32);
+}
+.streak.hidden { display: none; }
+/* Fixed slot: the badge never resizes across tiers. The flame only scales
+   *inside* this 50px box (JS sets transform, always <= 1), so it never overflows. */
+#streak-fire { width: 50px; height: 50px; flex: 0 0 50px; display: block; transform-origin: 50% 62%; filter: drop-shadow(0 0 9px rgba(255,140,40,.45)); }
+.streak .days { font-size: 26px; font-weight: 800; color: #ffd9a3; line-height: 1; font-variant-numeric: tabular-nums; text-align: right; }
+.streak .days small { display: block; font-size: 11px; font-weight: 600; opacity: .72; color: #ffcaa0; }
+
+/* ---- share CTA: shimmer button (prebuilt skewed light-sweep pattern) ---- */
+.deck-share { margin-top: auto; padding-top: 18px; }
+.btn-share-x {
+  position: relative; width: 100%; border: none; cursor: pointer;
+  padding: 17px 20px; border-radius: 16px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  font-size: 17px; font-weight: 800; color: #fff; letter-spacing: .3px;
+  background: linear-gradient(120deg, #ff4d67, #ff7a45 48%, #ffb347);
+  box-shadow: 0 10px 28px rgba(255,90,70,.45);
+  transition: transform .12s ease, box-shadow .12s ease;
+  overflow: hidden; isolation: isolate;
+  animation: ctaBreathe 3.4s ease-in-out infinite;
+}
+/* diagonal sheen that sweeps across — auto-loops so it shimmers on mobile too */
+.btn-share-x::before {
+  content: ""; position: absolute; top: 0; left: -120%; width: 65%; height: 100%; z-index: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.55) 50%, transparent 80%);
+  transform: skewX(-22deg); animation: ctaShine 3.4s ease-in-out infinite;
+}
+.btn-share-x > * { position: relative; z-index: 1; }   /* label + icon ride above the sheen */
+.btn-share-x .send-ico { width: 19px; height: 19px; transition: transform .2s ease; }
+/* Keep the warm gradient on hover (beats the global `button:hover { background:blue }`)
+   and show a crisp ring instead of a colour change. box-shadow ring = no layout shift. */
+.btn-share-x:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(120deg, #ff4d67, #ff7a45 48%, #ffb347);
+  box-shadow: 0 16px 40px rgba(255,90,70,.6), 0 0 0 2px rgba(255,255,255,.9);
+}
+.btn-share-x:hover .send-ico { transform: translateX(-3px) rotate(-8deg); }
+.btn-share-x:focus-visible {
+  outline: none;
+  box-shadow: 0 16px 40px rgba(255,90,70,.6), 0 0 0 2px rgba(255,255,255,.9);
+}
+.btn-share-x:active { transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) {
+  .btn-share-x, .btn-share-x::before { animation: none; }
+}
+@keyframes ctaShine { 0% { left: -120%; } 55%, 100% { left: 130%; } }
+@keyframes ctaBreathe {
+  0%, 100% { box-shadow: 0 10px 28px rgba(255,90,70,.4); }
+  50%      { box-shadow: 0 13px 40px rgba(255,130,80,.62); }
+}
+.deck-pitch { font-size: 12.5px; opacity: .6; margin: 12px 0 0; text-align: center; }
+
+/* ---- dots ---- */
+.end-dots { display: flex; justify-content: center; gap: 13px; margin-top: 12px; }
+.end-dot { width: 8px; height: 8px; border-radius: 50%; border: none; padding: 0; cursor: pointer;
+  background: rgba(170,190,230,.3); transition: all .2s ease; }
+.end-dot.on { background: var(--il-blue-light); width: 22px; border-radius: 5px; }
+
+/* ---- locations: single-column readable clickable rows ---- */
+.loc-panel #places-list { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; }
+.loc-panel #places-list .place-tile {
+  display: flex; flex-direction: row; align-items: center; gap: 12px;
+  width: 100%; text-align: right; cursor: pointer; padding: 10px 12px;
+  text-decoration: none;
+}
+.loc-panel #places-list .place-img {
+  flex: 0 0 52px; width: 52px; height: 52px; border-radius: 12px; overflow: hidden;
+  display: grid; place-items: center;
+}
+.loc-panel #places-list .place-img img { width: 100%; height: 100%; object-fit: cover; }
+.loc-panel #places-list .place-info { flex: 1 1 auto; min-width: 0; }
+.loc-panel #places-list .place-name {
+  font-size: 16.5px; font-weight: 800; color: #eef4ff; opacity: 1; margin-bottom: 3px; line-height: 1.25;
+}
+.loc-panel #places-list .place-desc {
+  font-size: 12.5px; opacity: .62; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.loc-panel #places-list .place-tile:hover { border-color: rgba(120,165,255,.45); }
+
+/* ---- leaderboard + archive inside panels ---- */
+.lb-panel #lb-list { display: flex; flex-direction: column; gap: 5px; max-height: 360px; overflow-y: auto; }
+.lb-panel #lb-stats { margin-bottom: 10px; }
+.deck-loading { text-align: center; opacity: .5; }
+.arch-panel .cal-grid, .arch-panel .cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+.arch-panel .cal-weekdays { font-size: 11px; opacity: .5; margin-bottom: 4px; text-align: center; }
+.arch-panel .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+
+/* ---- footer under deck ---- */
+#end-card .end-meta { text-align: center; margin-top: 10px; }
+
+@media (max-width: 380px) {
+  #end-card .score-panel #final-score { font-size: 60px; }
+  .end-swiper .swiper-slide { padding-left: 16px; padding-right: 16px; }
+}

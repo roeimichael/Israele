@@ -101,6 +101,8 @@ const STRINGS = {
     btn_leaderboard: "🏆 לוח יומי",
     btn_archive_end: "📅 ארכיון פאזלים",
     places_title: "המקומות של היום",
+    deck_share_cta: "שתפו את התוצאה",
+    streak_label: "ימים ברצף",
     btn_fresh_guest: "↺ התחל מחדש כאורח חדש",
     history_title: "היסטוריה",
     btn_close: "סגור",
@@ -231,6 +233,8 @@ const STRINGS = {
     btn_leaderboard: "🏆 Daily board",
     btn_archive_end: "📅 Archive",
     places_title: "Today's places",
+    deck_share_cta: "Share your score",
+    streak_label: "day streak",
     btn_fresh_guest: "↺ Start fresh as guest",
     history_title: "History",
     btn_close: "Close",
@@ -516,14 +520,10 @@ function repaintDynamic() {
     const nextBtn = document.getElementById("btn-howto-next");
     if (nextBtn) nextBtn.textContent = state._howtoIdx === 2 ? T("howto_start") : T("howto_next");
   }
-  // Re-render places list (if on end-card)
-  if (state.played.length && !document.getElementById("end-card").classList.contains("hidden")) {
-    renderPlacesList();
-  }
-  // Re-render calendar (lang-aware month + weekday names)
-  if (state._calMonth && !document.getElementById("archive-card").classList.contains("hidden")) {
-    renderCalendar();
-  }
+  // Re-render the end-screen deck bits (places + lang-aware calendar) if it's up.
+  const endUp = !document.getElementById("end-card").classList.contains("hidden");
+  if (state.played.length && endUp) renderPlacesList();
+  if (state._calMonth && endUp) renderCalendar();
 }
 
 // Israel-themed score emojis (5 buckets, best → worst):
@@ -625,10 +625,7 @@ async function init() {
   document.getElementById("btn-signout").onclick = onSignOut;
   document.getElementById("btn-history").onclick = openHistory;
   document.getElementById("btn-history-close").onclick = closeModal;
-  document.getElementById("btn-leaderboard").onclick = openLeaderboard;
-  document.getElementById("btn-lb-close").onclick = closeModal;
   document.getElementById("btn-share").onclick = onShare;
-  document.getElementById("btn-share-wa").onclick = onShareWhatsApp;
   document.getElementById("btn-name-save").onclick = onSaveName;
   document.getElementById("btn-fresh-guest").onclick = onFreshGuest;
 
@@ -653,8 +650,6 @@ async function init() {
   wireToolbarMenu();
   wireModalDismiss();
   document.getElementById("btn-lang").onclick = toggleLang;
-  document.getElementById("btn-archive").onclick = openArchive;
-  document.getElementById("btn-archive-close").onclick = closeModal;
   document.getElementById("cal-prev").onclick = () => navCal(-1);
   document.getElementById("cal-next").onclick = () => navCal(+1);
   document.getElementById("btn-howto-next").onclick = () => moveHowto(+1);
@@ -1544,13 +1539,14 @@ function onNext() {
 function showEnd(restored) {
   renderRoundChips();
   renderPlacesList();
-  // Per-day max is computed from the rounds' multipliers (1000 for the 1·2·2
-  // format, 1100 for pre-switch 2·2·2 archive days) — never hardcoded.
-  const maxScore = state.rounds.reduce((s, r) => s + Math.round(100 * (r.multiplier || 0)), 0) || 1000;
-  document.getElementById("final-max").textContent = T("final_max", { max: maxScore });
-  // Per-user comparison stats (rank / vs-avg / streak) now live on the daily
-  // board, not here — the end card stays focused on score + chips + share.
-  showCard("end-card");
+  const dn = document.getElementById("day-num-end");
+  if (dn) dn.textContent = state.dayNumber ? `#${state.dayNumber}` : "";
+  // Streak flame (hidden for guests / archive / no streak).
+  setStreakFlame(state.archive ? 0 : (state.streak || 0));
+  showCard("end-card");          // make visible before Swiper measures
+  initEndDeck();                 // build/refresh the swipe deck, centered on score
+  loadLeaderboardPanel();        // fetch + fill the leaderboard panel
+  loadArchivePanel();            // prefetch history + render the calendar panel
   if (restored) {
     document.getElementById("final-score").textContent = state.totalScore;
   } else {
@@ -1558,6 +1554,66 @@ function showEnd(restored) {
   }
   // Engaged moment: nudge install once the player has finished a game.
   if (!state.archive) setTimeout(maybeShowA2HS, 1400);
+}
+
+// ─── End-screen deck (Swiper coverflow: archive · board · score · places) ────
+const SCORE_SLIDE = 2;   // DOM order: 0 archive, 1 leaderboard, 2 score, 3 places
+
+function initEndDeck() {
+  const host = document.querySelector(".end-swiper");
+  if (!host || !window.Swiper) return;
+  requestAnimationFrame(() => {
+    if (state._deck) {
+      state._deck.update();
+      state._deck.slideTo(SCORE_SLIDE, 0);
+      syncDeckDots();
+      return;
+    }
+    state._deck = new Swiper(host, {
+      effect: "coverflow",
+      grabCursor: true,
+      centeredSlides: true,
+      slidesPerView: "auto",
+      initialSlide: SCORE_SLIDE,
+      speed: 460,
+      coverflowEffect: { rotate: 6, depth: 130, modifier: 1, stretch: -14, slideShadows: false },
+    });
+    buildDeckDots();
+    state._deck.on("slideChange", syncDeckDots);
+  });
+}
+function buildDeckDots() {
+  const el = document.getElementById("end-dots");
+  if (!el || !state._deck) return;
+  el.innerHTML = state._deck.slides
+    .map((_, i) => `<button class="end-dot${i === SCORE_SLIDE ? " on" : ""}" data-i="${i}" aria-label="${i + 1}"></button>`)
+    .join("");
+  el.querySelectorAll(".end-dot").forEach((b) => (b.onclick = () => state._deck.slideTo(+b.dataset.i)));
+}
+function syncDeckDots() {
+  document.querySelectorAll("#end-dots .end-dot")
+    .forEach((d, i) => d.classList.toggle("on", i === state._deck.activeIndex));
+}
+
+// Streak flame tiers: fire grows (5/10/25), 🌋 volcano at 50, ☄️ comet at 100.
+function setStreakFlame(streak) {
+  const badge = document.getElementById("streak-badge");
+  const fire = document.getElementById("streak-fire");
+  const num = document.getElementById("streak-num");
+  if (!badge || !fire) return;
+  if (!streak || streak < 1) { badge.classList.add("hidden"); return; }
+  badge.classList.remove("hidden");
+  if (num) num.textContent = streak;
+  // Badge stays a fixed size (CSS) — only the asset swaps, and the fire grows
+  // subtly within its slot. Volcano/comet sit at the slot's full size.
+  let src = "/anim/fire.json", scale = 0.82;
+  if (streak >= 100)     { src = "/anim/comet.json";   scale = 1.0; }
+  else if (streak >= 50) { src = "/anim/volcano.json"; scale = 1.0; }
+  else if (streak >= 25) { scale = 1.0; }
+  else if (streak >= 10) { scale = 0.92; }
+  fire.style.transform = `scale(${scale})`;
+  if (fire.getAttribute("src") !== src && typeof fire.load === "function") fire.load(src);
+  fire.setAttribute("src", src);
 }
 
 // Daily-board personal summary: your score, rank, gap-vs-average, streak.
@@ -1589,10 +1645,7 @@ function renderLbStats() {
 
 function renderPlacesList() {
   const list = document.getElementById("places-list");
-  const title = document.getElementById("places-title");
   const sorted = state.played.slice().sort((a, b) => a.round_idx - b.round_idx);
-  const anyEnriched = sorted.some((g) => g.description || g.image_url);
-  title.classList.toggle("hidden", !anyEnriched);
   list.innerHTML = sorted.map((g) => {
     const nm = LANG === "he" ? (g.name_he || g.name_en) : (g.name_en || g.name_he);
     const img = g.image_url
@@ -1601,17 +1654,16 @@ function renderPlacesList() {
     const desc = g.description
       ? `<div class="place-desc">${escapeHtml(g.description)}</div>`
       : "";
-    const name = g.source_url
-      ? `<a class="place-name" href="${escapeHtml(g.source_url)}" target="_blank" rel="noopener">${escapeHtml(nm || "")} ↗</a>`
-      : `<div class="place-name">${escapeHtml(nm || "")}</div>`;
-    return `
-      <div class="place-tile">
-        <div class="place-img">${img}</div>
-        <div class="place-info">
-          ${name}
-          ${desc}
-        </div>
-      </div>`;
+    const inner =
+      `<div class="place-img">${img}</div>` +
+      `<div class="place-info">` +
+        `<div class="place-name">${escapeHtml(nm || "")}${g.source_url ? " ↗" : ""}</div>` +
+        desc +
+      `</div>`;
+    // Whole tile is clickable when there's a source page.
+    return g.source_url
+      ? `<a class="place-tile" href="${escapeHtml(g.source_url)}" target="_blank" rel="noopener">${inner}</a>`
+      : `<div class="place-tile">${inner}</div>`;
   }).join("");
 }
 
@@ -1696,10 +1748,11 @@ function onShareWhatsApp() {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-async function openLeaderboard() {
+// Daily board now lives in the end-screen deck (no modal). Fetch + fill in place.
+async function loadLeaderboardPanel() {
   const list = document.getElementById("lb-list");
-  list.innerHTML = "<p>…</p>";
-  openModal("lb-card");                 // open first so a failure shows in-modal, never silently
+  if (!list) return;
+  list.innerHTML = "<p class='deck-loading'>…</p>";
   try {
     const url = `/api/leaderboard?date=${encodeURIComponent(state.date)}&player_id=${encodeURIComponent(playerId)}`;
     const lb = await fetchJSON(url);    // throws on !ok + 15s timeout
@@ -1710,6 +1763,7 @@ async function openLeaderboard() {
     }
     list.innerHTML = rows.length ? rows.join("") : `<p>${T("no_lb_yet")}</p>`;
     renderLbStats();
+    state._deck?.update();              // row count changed → recompute slide height
   } catch (e) {
     console.warn("leaderboard load failed", e);
     list.innerHTML = `<p>${T("lb_load_fail")}</p>`;
@@ -1950,7 +2004,8 @@ function _ilTodayIso() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(new Date());
 }
 
-async function openArchive() {
+// Archive calendar now lives in the end-screen deck (no modal).
+async function loadArchivePanel() {
   // Pre-fetch played history once for the session (signed-in users only).
   if (session?.access_token && state._playedMap === undefined) {
     try {
@@ -1968,7 +2023,7 @@ async function openArchive() {
     state._calMonth = new Date(seed + "T00:00:00");
   }
   renderCalendar();
-  openModal("archive-card");
+  state._deck?.update();
 }
 
 function navCal(delta) {

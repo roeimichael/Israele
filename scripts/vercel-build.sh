@@ -10,6 +10,8 @@ cp frontend/privacy.html public/privacy.html
 cp frontend/terms.html public/terms.html
 cp frontend/robots.txt public/robots.txt
 cp frontend/googlea45400d763791cc6.html public/googlea45400d763791cc6.html
+mkdir -p public/anim
+cp frontend/anim/*.json public/anim/
 cp docs/flag.png public/docs/flag.png
 cp docs/icon-192.png public/docs/icon-192.png
 cp docs/icon-512.png public/docs/icon-512.png

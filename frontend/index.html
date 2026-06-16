@@ -67,7 +67,10 @@
 <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
 
 <link href="/static/style.css?v=33" rel="stylesheet" />
-<link href="/static/style-v2.css?v=11" rel="stylesheet" />
+<link href="/static/style-v2.css?v=12" rel="stylesheet" />
+
+<!-- Swiper: prebuilt carousel (coverflow stacked-panel effect) for the end screen -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 </head>
 <body>
 <!-- splash: covers everything until init resolves -->
@@ -216,39 +219,62 @@
     <button id="btn-next" data-i18n="btn_next">הבא ←</button>
   </div>
 
-  <!-- end card -->
-  <div id="end-card" class="card hidden">
-    <h1 data-i18n="end_title">סיום משחק</h1>
-    <div id="final-score"></div>
-    <div id="final-max" data-i18n="final_max">מתוך 1000</div>
-    <div id="avg-line" class="hidden"></div>
-    <div id="emoji-strip"></div>
-    <div id="rank-strip" class="hidden">
-      <span class="rank-headline" id="rank-headline"></span>
-      <span class="rank-sub" id="rank-sub"></span>
-      <span class="rank-streak hidden" id="rank-streak"></span>
-    </div>
-    <div id="end-actions">
-      <div class="share-row">
-        <button id="btn-share-wa" class="btn-cta btn-cta-wa" data-i18n-attr="title" data-i18n="btn_share_wa_title" title="שתפו בוואטסאפ">
-          <span class="btn-cta-emoji">💬</span>
-          <span class="btn-cta-title" data-i18n="btn_share_wa_short">וואטסאפ</span>
-        </button>
-        <button id="btn-share" class="btn-cta" data-i18n-attr="title" data-i18n="btn_share_title" title="אתגרו חברים">
-          <span class="btn-cta-emoji">📲</span>
-          <span class="btn-cta-title" data-i18n="btn_share_short">העתק / שתף</span>
-        </button>
+  <!-- end card: swipeable deck of floating panels (archive · board · score · places) -->
+  <div id="end-card" class="card deck-host hidden">
+    <div class="swiper end-swiper" dir="ltr">
+      <div class="swiper-wrapper">
+
+        <!-- archive -->
+        <div class="swiper-slide arch-panel">
+          <div class="panel-label" data-i18n="archive_title">ארכיון פאזלים</div>
+          <div class="cal-header">
+            <button id="cal-prev" class="cal-nav" type="button">‹</button>
+            <span id="cal-month-label"></span>
+            <button id="cal-next" class="cal-nav" type="button">›</button>
+          </div>
+          <div id="cal-weekdays" class="cal-weekdays"></div>
+          <div id="cal-grid" class="cal-grid"></div>
+          <p class="cal-hint" data-i18n="archive_hint">לחצו על תאריך כדי לשחק את הפאזל של אותו יום.</p>
+        </div>
+
+        <!-- leaderboard -->
+        <div class="swiper-slide lb-panel">
+          <div class="panel-label" data-i18n="lb_title">לוח יומי</div>
+          <div id="lb-stats" class="hidden"></div>
+          <div id="lb-list"></div>
+        </div>
+
+        <!-- score (main) -->
+        <div class="swiper-slide score-panel">
+          <p class="end-eyebrow"><span data-i18n="end_title">סיום משחק</span> <span id="day-num-end" class="day-tag"></span></p>
+          <div id="final-score"></div>
+          <div id="emoji-strip"></div>
+          <div id="streak-badge" class="streak hidden">
+            <lottie-player id="streak-fire" src="/anim/fire.json" background="transparent" speed="1" autoplay loop></lottie-player>
+            <span class="days"><span id="streak-num">0</span><small data-i18n="streak_label">ימים ברצף</small></span>
+          </div>
+          <div class="deck-share">
+            <button id="btn-share" class="btn-share-x">
+              <svg class="send-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+              <span class="lbl" data-i18n="deck_share_cta">שתפו את התוצאה</span>
+            </button>
+            <p class="deck-pitch" data-i18n="btn_share_sub">בדקו אם מישהו יצליח לעבור אתכם</p>
+          </div>
+        </div>
+
+        <!-- places -->
+        <div class="swiper-slide loc-panel">
+          <div class="panel-label" data-i18n="places_title">המקומות של היום</div>
+          <div id="places-list"></div>
+        </div>
+
       </div>
-      <p class="share-pitch" data-i18n="btn_share_sub">בדקו אם החברים יצליחו לעבור אתכם</p>
-      <div class="end-actions-secondary">
-        <button id="btn-archive" class="btn-secondary" data-i18n="btn_archive_end">📅 ארכיון</button>
-        <button id="btn-leaderboard" class="btn-secondary" data-i18n="btn_leaderboard">🏆 לוח יומי</button>
-      </div>
     </div>
+
+    <div class="end-dots" id="end-dots"></div>
     <div id="next-cd" class="countdown"><span data-i18n="next_puzzle_in">פאזל הבא בעוד</span> <span id="cd2"></span></div>
-    <h3 id="places-title" class="places-title hidden" data-i18n="places_title">המקומות של היום</h3>
-    <div id="places-list"></div>
-    <!-- Add-to-home-screen nudge: inline in the end-card flow (never floats over content) -->
+
+    <!-- Add-to-home-screen nudge: inline below the deck (never floats over content) -->
     <div id="a2hs" class="a2hs hidden" role="region" aria-label="הוספה למסך הבית">
       <img src="/docs/icon-192.png" alt="" class="a2hs-icon" width="40" height="40" />
       <div class="a2hs-text">
@@ -261,7 +287,6 @@
     <div class="end-meta">
       <button id="btn-fresh-guest" class="link-btn" data-i18n="btn_fresh_guest">↺ התחל מחדש כאורח חדש</button>
     </div>
-    <p class="credit"><span data-i18n="credit_dev">פותח על ידי</span> <a href="https://roei-michael-portfolio.vercel.app/" target="_blank" rel="noopener">Roei Michael</a></p>
   </div>
 
   <!-- name prompt -->
@@ -279,14 +304,6 @@
     <button id="btn-history-close" data-i18n="btn_close">סגור</button>
   </div>
 
-  <!-- leaderboard modal -->
-  <div id="lb-card" class="card hidden">
-    <h2 data-i18n="lb_title">לוח יומי</h2>
-    <div id="lb-stats" class="hidden"></div>
-    <div id="lb-list"></div>
-    <button id="btn-lb-close" data-i18n="btn_close">סגור</button>
-  </div>
-
   <!-- stats modal -->
   <div id="stats-card" class="card hidden">
     <h2 data-i18n="stats_title">סטטיסטיקות</h2>
@@ -299,20 +316,6 @@
     <h3 class="hist-title" data-i18n="histogram_title">פיזור ניקוד</h3>
     <div id="histogram"></div>
     <button id="btn-stats-close" data-i18n="btn_close">סגור</button>
-  </div>
-
-  <!-- archive calendar modal -->
-  <div id="archive-card" class="card hidden">
-    <h2 data-i18n="archive_title">ארכיון</h2>
-    <div class="cal-header">
-      <button id="cal-prev" class="cal-nav" type="button">‹</button>
-      <span id="cal-month-label"></span>
-      <button id="cal-next" class="cal-nav" type="button">›</button>
-    </div>
-    <div id="cal-weekdays" class="cal-weekdays"></div>
-    <div id="cal-grid" class="cal-grid"></div>
-    <p class="cal-hint" data-i18n="archive_hint">לחצו על תאריך כדי לשחק את הפאזל של אותו יום.</p>
-    <button id="btn-archive-close" data-i18n="btn_close">סגור</button>
   </div>
 
   <!-- how-to-play modal -->
@@ -355,6 +358,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/animejs@4/dist/bundles/anime.umd.min.js"></script>
 <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
-<script src="/static/app.js?v=56"></script>
+<!-- end-screen deck (Swiper) + animated streak flame (Lottie player) -->
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script src="https://unpkg.com/@lottiefiles/lottie-player@2.0.12/dist/lottie-player.js"></script>
+<script src="/static/app.js?v=57"></script>
 </body>
 </html>
