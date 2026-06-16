@@ -463,9 +463,12 @@ body.modal-open { overflow: hidden; }
   #end-card.deck-host { max-width: 468px; }
 }
 
-.end-swiper { width: 100%; padding: 10px 0 4px; overflow: visible; direction: ltr; }
+/* Deck + dots inherit the page direction (set per-language by applyI18n):
+   RTL for Hebrew, LTR for English. Swiper picks up RTL from the inherited
+   `direction` and mirrors the coverflow + the dot order to match. */
+.end-swiper { width: 100%; padding: 10px 0 4px; overflow: visible; }
 .end-swiper .swiper-slide {
-  direction: rtl;
+  direction: inherit;
   width: 78%;
   height: auto;
   box-sizing: border-box;
