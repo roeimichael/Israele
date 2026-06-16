@@ -451,6 +451,18 @@ body.modal-open { overflow: hidden; }
 }
 #end-card.deck-host::before, #end-card.deck-host::after { display: none !important; }
 
+/* End screen: dim + blur whatever's behind the deck (the map) so the floating
+   panels read as the clear focus — matters most on desktop where the deck is a
+   centered column over a wide bright map. */
+#overlay:has(#end-card:not(.hidden)) {
+  background: rgba(8, 10, 14, 0.84);
+  backdrop-filter: blur(9px) saturate(1.1);
+  -webkit-backdrop-filter: blur(9px) saturate(1.1);
+}
+@media (min-width: 560px) {
+  #end-card.deck-host { max-width: 468px; }
+}
+
 .end-swiper { width: 100%; padding: 10px 0 4px; overflow: visible; direction: ltr; }
 .end-swiper .swiper-slide {
   direction: rtl;
@@ -479,7 +491,10 @@ body.modal-open { overflow: hidden; }
 }
 
 /* ---- score (main) panel ---- */
-.score-panel { text-align: center; display: flex; flex-direction: column; }
+/* Content is vertically centered so the score block sits balanced in the panel
+   (the panel stretches to the tallest sibling — without this the content
+   top-aligns and leaves a gap above the share button). */
+.score-panel { text-align: center; display: flex; flex-direction: column; justify-content: center; }
 .end-eyebrow { font-size: 13px; opacity: .55; margin: 2px 0 0; }
 .end-eyebrow .day-tag { opacity: .8; }
 #end-card .score-panel #final-score {
@@ -505,7 +520,11 @@ body.modal-open { overflow: hidden; }
 .streak .days small { display: block; font-size: 11px; font-weight: 600; opacity: .72; color: #ffcaa0; }
 
 /* ---- share CTA: shimmer button (prebuilt skewed light-sweep pattern) ---- */
-.deck-share { margin-top: auto; padding-top: 18px; }
+.deck-share { padding-top: 16px; }
+/* countdown + "start fresh" now live inside the score panel (under the share)
+   so they don't add dead space below the deck. */
+.score-panel #next-cd { margin-top: 14px; }
+.score-panel .end-meta { margin-top: 4px; }
 .btn-share-x {
   position: relative; width: 100%; border: none; cursor: pointer;
   padding: 17px 20px; border-radius: 16px;
