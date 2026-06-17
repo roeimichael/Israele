@@ -438,6 +438,10 @@ const SAT_STYLE = {
 
 const multClass = (m) => (m === 1 ? "m1" : m === 1.5 ? "m2" : "m3");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Accessibility: JS-driven animations (anime.js + rAF) aren't covered by the
+// CSS prefers-reduced-motion rule, so gate them on this live check.
+const prefersReducedMotion = () =>
+  !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 // ─── State ──────────────────────────────────────────────────────────────────
 let map;
@@ -475,6 +479,9 @@ const state = {
   pendingGuess: null, pendingMarker: null,
   guessMarker: null, truthMarker: null, cometMarker: null,
   lineId: null, polyId: null,
+  // rAF handle for the reveal line's marching-dash loop, so clearMarkers() can
+  // cancel it unconditionally (e.g. round torn down before the reveal finishes).
+  antRaf: null,
   // Per-round truth coords decoded client-side from /api/today.tile_hash,
   // used to start the reveal animation before /api/today/guess returns.
   _idx: null,
@@ -600,6 +607,24 @@ async function init() {
   };
   map.on("mousedown", onPress);
   map.on("touchstart", onPress);
+
+  // Keep the WebGL canvas in sync with its container. The overlay/card toggles
+  // (and mobile URL-bar show/hide) change the available space without firing a
+  // window resize, which would otherwise leave the canvas at a stale size and
+  // skew click/touch hit-detection in pass-through mode. ResizeObserver covers
+  // container-only changes that map's built-in window listener misses.
+  if (window.ResizeObserver) {
+    const mapEl = document.getElementById("map");
+    if (mapEl) {
+      let rzRaf = 0;
+      const ro = new ResizeObserver(() => {
+        // Coalesce bursts of layout changes into one resize per frame.
+        if (rzRaf) return;
+        rzRaf = requestAnimationFrame(() => { rzRaf = 0; try { map.resize(); } catch (_) {} });
+      });
+      ro.observe(mapEl);
+    }
+  }
 
   // ----- AUTH (awaits config, but config was fetched in parallel) -----
   const cfg = await cfgP;
@@ -795,6 +820,10 @@ function animateCardIn(cardId) {
   if (!window.anime) return;
   const card = document.getElementById(cardId);
   if (!card || card.classList.contains("hidden")) return;
+  // Reduced-motion: show the card instantly without the fade/scale entrance.
+  if (prefersReducedMotion()) {
+    card.style.opacity = "1"; card.style.transform = "none"; return;
+  }
   card.style.opacity = "0";
   card.style.transform = "translateY(12px) scale(0.98)";
   anime.animate(card, {
@@ -1236,6 +1265,9 @@ function _hexagramFeature(centerLngLat, screenRadiusPx, rotateRad) {
 // visually while the geo coords adapt to the current zoom/pan.
 let _magenSeq = 0;
 function spawnMagenDavid(lngLat, color = "#0038b8", maxScreenRadius = 80, duration = 1400, rotateDeg = 30) {
+  // Reduced-motion: skip the expanding/rotating hexagram burst (transient effect
+  // that fully fades out, so there's nothing to show statically).
+  if (prefersReducedMotion()) return;
   const id = "magen-" + (++_magenSeq);
   try {
     map.addSource(id, { type: "geojson", data: _hexagramFeature(lngLat, 5, 0) });
@@ -1338,10 +1370,9 @@ function animateLine(from, to, durationMs = 2500) {
   // Comet head — WebGL circle layer (not HTML marker; HTML overlays don't
   // render reliably on this setup). One Point feature whose coords are
   // updated each frame in onUpdate to follow the line tip.
+  // No defensive removeLayer/removeSource here: the comet head is always torn
+  // down in clearMarkers() when the round ends, so it never exists at this point.
   const cometSrcId = "comet-head";
-  if (map.getLayer(cometSrcId)) map.removeLayer(cometSrcId);
-  if (map.getLayer(cometSrcId + "-glow")) map.removeLayer(cometSrcId + "-glow");
-  if (map.getSource(cometSrcId)) map.removeSource(cometSrcId);
   map.addSource(cometSrcId, { type: "geojson",
     data: { type: "Feature", geometry: { type: "Point", coordinates: from } }});
   map.addLayer({ id: cometSrcId + "-glow", type: "circle", source: cometSrcId,
@@ -1351,18 +1382,23 @@ function animateLine(from, to, durationMs = 2500) {
              "circle-stroke-color": "#0038b8", "circle-stroke-width": 2 }});
   const cometSrc = map.getSource(cometSrcId);
 
-  // Marching-dash loop
+  const reduced = prefersReducedMotion();
+
+  // Marching-dash loop — skipped under reduced-motion (static dashes remain).
+  // antRaf lives on state so clearMarkers() can cancel it even if the reveal
+  // is torn down before finish() runs (e.g. error / navigation mid-round).
   const dash = 0.55, gap = 1.8, precision = 1 / 40;
   const dashSeq = [];
   for (let i = 0; i <= dash; i += precision) dashSeq.push([i, gap, dash - i, 0]);
   for (let i = 0; i < gap;  i += precision) dashSeq.push([0, i, dash, gap - i]);
-  let dashStep = 0, antRaf = null;
+  let dashStep = 0;
+  state.antRaf = null;
   const tickDash = () => {
     dashStep = (dashStep + 1) % dashSeq.length;
     if (map.getLayer(state.lineId)) map.setPaintProperty(state.lineId, "line-dasharray", dashSeq[dashStep]);
-    antRaf = requestAnimationFrame(tickDash);
+    state.antRaf = requestAnimationFrame(tickDash);
   };
-  antRaf = requestAnimationFrame(tickDash);
+  if (!reduced) state.antRaf = requestAnimationFrame(tickDash);
 
   const src = map.getSource(state.lineId);
   const obj = { t: 0 };
@@ -1418,11 +1454,16 @@ function animateLine(from, to, durationMs = 2500) {
     const finish = () => {
       try {
         clearTimeout(backstop);
-        cancelAnimationFrame(antRaf);
+        if (state.antRaf) { cancelAnimationFrame(state.antRaf); state.antRaf = null; }
         fireImpact();   // safe — idempotent
       } catch (e) { console.warn("[animateLine.finish]", e); }
       safeResolve();
     };
+
+    // Reduced-motion: skip the comet flight + easing entirely. Snap the line to
+    // the truth coord and fire the same impact (bursts self-gate motion), so the
+    // final result is identical — just without the 2.5s travel animation.
+    if (reduced) { finish(); return; }
 
     anime.animate(obj, {
       t: 1, duration: durationMs, ease: "outQuart",
@@ -1451,6 +1492,13 @@ function animateLine(from, to, durationMs = 2500) {
 function popMarker(marker, big = false) {
   const el = marker.getElement().querySelector(".marker-dot");
   if (!el) return;
+  // Reduced-motion: place the dot at full size instantly, no pop or pulse ring.
+  if (prefersReducedMotion()) {
+    el.style.transform = "scale(1)";
+    const p = marker.getElement().querySelector(".marker-pulse");
+    if (p) p.style.opacity = "0";
+    return;
+  }
   // Start at ~60% scale (clearly visible on tap) and overshoot via outBack —
   // outElastic was slow at the start which read as "did my tap register?".
   el.style.transform = "scale(0.6)";
@@ -1476,6 +1524,9 @@ function popMarker(marker, big = false) {
 
 function spawnRipple(lngLat, color = "#4d7df0", maxScale = 3.6, duration = 1300, count = 1) {
   if (!window.anime) return;
+  // Reduced-motion: skip the expanding ripple ring entirely (purely decorative
+  // tap feedback that animates to opacity 0 and removes itself).
+  if (prefersReducedMotion()) return;
   for (let i = 0; i < count; i++) {
     const wrap = document.createElement("div");
     wrap.className = "marker-wrap";
@@ -1668,6 +1719,9 @@ function renderPlacesList() {
 }
 
 function countUp(el, from, to, ms) {
+  // Respect reduced-motion: snap the score instantly (CSS media query at
+  // style.css:738 only covers CSS animations, not this JS-driven counter).
+  if (prefersReducedMotion()) { el.textContent = to; return; }
   const start = performance.now();
   const ease = (t) => 1 - Math.pow(1 - t, 3);
   function step(t) {
@@ -1797,6 +1851,9 @@ async function openHistory() {
 
 // ─── UI utils ───────────────────────────────────────────────────────────────
 function clearMarkers() {
+  // Stop the reveal line's marching-dash rAF loop if it's still running (it
+  // would otherwise keep firing against a removed layer until finish()).
+  if (state.antRaf) { cancelAnimationFrame(state.antRaf); state.antRaf = null; }
   state.guessMarker?.remove(); state.guessMarker = null;
   state.truthMarker?.remove(); state.truthMarker = null;
   state.cometMarker?.remove(); state.cometMarker = null;

@@ -168,6 +168,9 @@ input:focus-visible,
     0 10px 32px -8px rgba(0, 56, 184, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   overflow: hidden;
+  /* Promote to a compositing layer so the anime.js fade/scale entrance
+     (animateCardIn) runs on the GPU instead of triggering full repaints. */
+  will-change: opacity, transform;
 }
 /* gradient border via mask */
 .card::before {
@@ -742,6 +745,12 @@ a.place-name:hover { text-decoration: underline; }
     transition-duration: 0.05s !important;
   }
   .btn-cta { animation: none; }
+  /* Splash hexagram: the global rule still runs md-spin once (snapping a full
+     360° rotation) — kill these outright so the splash sits still. */
+  .magen-david,
+  .magen-david polygon:first-of-type { animation: none !important; }
+  /* Progress dots: snap the active scale/glow without a transition. */
+  .progress-dots .dot { transition: none !important; }
 }
 
 /* ─── Mobile (≤ 480 px) ──────────────────────────────────────────────── */
