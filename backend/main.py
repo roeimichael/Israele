@@ -452,7 +452,16 @@ def today_guess(body: GuessIn, request: Request):
     # Resolve auth (optional). When signed in, forward the user's JWT so RLS
     # sees auth.uid() = their id; anon writes still go through the publishable key.
     jwt = _jwt(request)
-    auth_user_id = supa.verify_jwt(jwt or "")
+    auth_user_id = supa.verify_jwt(jwt) if jwt else None
+    # A token was sent but didn't verify (expired / revoked) while the client
+    # still holds an *owned* player_id. An anon write would be rejected by RLS
+    # and surface to the user as an opaque 500. Return a clean, actionable 401
+    # instead so the client can refresh the session + retry (or reload). Guests
+    # (no token, or an unowned player) fall through and keep working on the key.
+    if jwt and not auth_user_id:
+        owner = supa.select("players", select="auth_user_id", id=f"eq.{pid}")
+        if owner and owner[0].get("auth_user_id"):
+            raise HTTPException(401, detail="session_expired")
     user_jwt = jwt if auth_user_id else None
 
     # 1) Upsert player. Ignore-duplicates so the row exists, then patch name/auth.
@@ -476,12 +485,19 @@ def today_guess(body: GuessIn, request: Request):
         supa.update("players", {"id": f"eq.{pid}"}, patch, jwt=user_jwt)
 
     # 2) Upsert game row (one per player per day).
-    game_row = supa.upsert(
-        "games",
-        {"player_id": pid, "puzzle_date": date, "total_score": 0},
-        on_conflict="player_id,puzzle_date",
-        jwt=user_jwt,
-    )
+    try:
+        game_row = supa.upsert(
+            "games",
+            {"player_id": pid, "puzzle_date": date, "total_score": 0},
+            on_conflict="player_id,puzzle_date",
+            jwt=user_jwt,
+        )
+    except httpx.HTTPStatusError as e:
+        # Failsafe: any RLS rejection on the owned game write (race between the
+        # ownership check above and the write, etc.) → actionable 401, not 500.
+        if e.response is not None and e.response.status_code in (401, 403):
+            raise HTTPException(401, detail="session_expired")
+        raise
     game_id = game_row[0]["id"]
 
     # 3) Insert guess (idempotent on (game_id, round_idx)).

@@ -151,6 +151,7 @@ const STRINGS = {
     btn_next: "הבא ←",
     click_inside_israel: "לחצו בתוך ישראל",
     score_save_fail: "שגיאה בשמירת הניקוד",
+    session_expired_reload: "ההתחברות פגה. נטען מחדש ותזינו שם כדי להמשיך — ההתקדמות שכבר נשמרה תיטען.",
     puzzle_load_fail: "נכשלה טעינת הפאזל. נסו שוב.",
     stats_load_fail: "טעינת סטטיסטיקות נכשלה",
     lb_load_fail: "נכשלה הטעינה. נסו שוב.",
@@ -283,6 +284,7 @@ const STRINGS = {
     btn_next: "Next →",
     click_inside_israel: "Click inside Israel",
     score_save_fail: "Score save failed",
+    session_expired_reload: "Your session expired. Reload and enter your name to keep playing — progress already saved will load.",
     puzzle_load_fail: "Failed to load puzzle. Try again.",
     stats_load_fail: "Stats load failed",
     lb_load_fail: "Couldn't load. Try again.",
@@ -634,6 +636,12 @@ async function init() {
     });
     const { data } = await sb.auth.getSession();
     session = data.session;
+    // If the stored token already expired (tab restored after >1h, device sleep)
+    // refresh it now — before any authed read/write — so the first call doesn't
+    // 401/403 and dead-end the player at load. Cheap: only fires when expired.
+    if (session?.expires_at && session.expires_at * 1000 < Date.now() + 60000) {
+      await refreshSession();
+    }
     sb.auth.onAuthStateChange((evt, s) => {
       const wasSignedOut = !session;
       session = s;
@@ -1103,6 +1111,52 @@ async function postGuessWithRetry(url, headers, payload, tries = 4) {
   return { _err: lastErr || new Error("guess request failed") };
 }
 
+// Force a token refresh using the stored refresh token. Returns the fresh
+// session (and updates the global) on success, else null. Covers the case where
+// the access token expired while the tab was open and autoRefresh didn't fire
+// (backgrounded tab, sleep), so the cached `session.access_token` is stale.
+async function refreshSession() {
+  if (!sb) return null;
+  try {
+    const { data } = await sb.auth.refreshSession();
+    if (data?.session) { session = data.session; return data.session; }
+  } catch (e) { console.warn("[ils] refreshSession failed", e); }
+  return null;
+}
+
+// Submit a guess, transparently recovering from an expired session: the backend
+// returns 401 {detail:"session_expired"} when our token is stale but we still
+// hold an owned player_id. Refresh the token once and retry so the round saves
+// without the player noticing. If the refresh token is also dead, the caller
+// surfaces the reload failsafe.
+async function postGuess(headers, body) {
+  let res = await postGuessWithRetry(_guessUrl(), headers, body);
+  if (res?.detail === "session_expired") {
+    const fresh = await refreshSession();
+    if (fresh?.access_token) {
+      const h2 = { ...headers, Authorization: `Bearer ${fresh.access_token}` };
+      res = await postGuessWithRetry(_guessUrl(), h2, body);
+    }
+  }
+  return res;
+}
+
+// Unrecoverable expired session (refresh token revoked/dead — e.g. after a
+// project reset). Can't save silently. Clear the stale owned identity and
+// reload as a guest so the next play writes on the guest RLS branch; the
+// player re-enters a name and resumes from server-saved progress.
+function sessionExpiredRecovery() {
+  if (confirm(T("session_expired_reload"))) {
+    // resetToGuest() clears player_id + name and reloads; sign out first so the
+    // dead session isn't re-resumed on next load.
+    if (sb) { sb.auth.signOut().catch(() => {}).finally(resetToGuest); }
+    else resetToGuest();
+  } else {
+    state.awaitingClick = true;
+    document.body.classList.add("awaiting-click");
+  }
+}
+
 async function submitGuess(lng, lat) {
   state.awaitingClick = false;
   document.body.classList.remove("awaiting-click");
@@ -1120,7 +1174,7 @@ async function submitGuess(lng, lat) {
   const body = state.archive
     ? { player_id: playerId, round_idx: state.cursor, lat, lon: lng }
     : { player_id: playerId, name: playerName, round_idx: state.cursor, lat, lon: lng };
-  const fetchP = postGuessWithRetry(_guessUrl(), headers, body);
+  const fetchP = postGuess(headers, body);
 
   const localTruth = state._idx?.[state.cursor];   // [lat, lon] or undefined
   console.log("[ils] click", { round: state.cursor, fast: !!localTruth, t: Math.round(performance.now()) });
@@ -1143,12 +1197,15 @@ async function submitGuess(lng, lat) {
 
   const res = await fetchP;
   if (res._err || res.detail) {
+    clearMarkers();
+    clearPolygon();
+    // Expired session that even a token refresh couldn't recover (dead refresh
+    // token). Offer the reload-and-rename failsafe instead of a dead-end toast.
+    if (res.detail === "session_expired") { sessionExpiredRecovery(); return; }
     // The POST already retried internally; reaching here means a sustained
     // outage or a 4xx. Don't brick the round on a dead map — roll back the
     // reveal and re-arm the click so the player can simply tap again.
     flashToast(res.detail || T("score_save_fail"));
-    clearMarkers();
-    clearPolygon();
     state.awaitingClick = true;
     document.body.classList.add("awaiting-click");
     return;
