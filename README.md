@@ -50,8 +50,8 @@ Multiplier depends on the category:
 
 | Layer | Choice |
 |---|---|
-| Backend | FastAPI + uvicorn on **Railway** (Nixpacks) |
-| Frontend | Static HTML/JS/CSS on **Vercel** (`/api/*` proxied to Railway) |
+| Backend | FastAPI on **Vercel** (Python serverless function, `api/index.py`) |
+| Frontend | Static HTML/JS/CSS on **Vercel** (same project, same domain) |
 | DB + Auth | **Supabase** Postgres + PostgREST + Google OAuth + RLS |
 | Domain | **Cloudflare** DNS → `israel-e.com` (Vercel TLS) |
 | Map engine | [MapLibre GL JS](https://maplibre.org/) (WebGL) |
@@ -68,7 +68,7 @@ python -m venv .venv
 .venv/Scripts/activate                  # Windows
 # source .venv/bin/activate              # macOS / Linux
 pip install -r backend/requirements.txt
-# Required env (mirror what Railway has):
+# Required env (mirror what's set on Vercel):
 # SUPABASE_URL, SUPABASE_KEY (publishable / anon), ALLOWED_ORIGINS, SERVE_FRONTEND=1
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
@@ -79,19 +79,18 @@ Open **http://127.0.0.1:8000** → click *Play*.
 
 ## Deploy
 
-See [`docs/MIGRATION.md`](docs/MIGRATION.md) for the full Railway + Vercel + Cloudflare + Supabase + Google OAuth setup. Every push to `main` redeploys both Railway (backend) and Vercel (frontend) automatically.
+See [`docs/MIGRATION.md`](docs/MIGRATION.md) for the Cloudflare + Supabase + Google OAuth setup (some of it predates the move off Railway). Every push to `main` redeploys Vercel (frontend + backend, one project) automatically.
 
 ## Repo layout
 
 ```
 backend/        FastAPI app — routes, scoring, place loader, supabase client
+api/index.py    Vercel Python entrypoint — re-exports backend.main:app
 frontend/       index.html, app.js, style.css (vanilla, no build step)
 scripts/        one-shot data ETL (Overpass + geoBoundaries fetch, merge)
 data/           places.csv (~3.3k entries), polygons.json, israel.geojson
 docs/           screenshots, migration guide
-nixpacks.toml   Railway build config (venv + uvicorn entrypoint)
-railway.json    Railway deploy config (Nixpacks, restart-on-failure)
-vercel.json     Vercel static deploy + /api/* rewrite to Railway
+vercel.json     Vercel config: static build + /api/* routed to api/index.py
 ```
 
 ## API (used by the frontend)

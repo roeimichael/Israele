@@ -4,15 +4,15 @@
   "buildCommand": "bash scripts/vercel-build.sh",
   "outputDirectory": "public",
   "installCommand": "echo skip",
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "data/**",
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://israele-production.up.railway.app/api/:path*"
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "https://israele-production.up.railway.app/sitemap.xml"
-    },
+    { "source": "/api/:path*", "destination": "/api/index" },
+    { "source": "/sitemap.xml", "destination": "/api/index" },
     { "source": "/static/:path*", "destination": "/:path*" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/terms", "destination": "/terms.html" }
