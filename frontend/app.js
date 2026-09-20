@@ -140,6 +140,8 @@ const STRINGS = {
     btn_signout_tooltip: "התנתק מהחשבון",
     btn_help_tooltip: "איך משחקים",
     btn_archive_tooltip: "ארכיון פאזלים",
+    cal_prev: "החודש הקודם",
+    cal_next: "החודש הבא",
     archive_title: "ארכיון פאזלים",
     archive_hint: "לחצו על תאריך כדי לשחק את הפאזל של אותו יום.",
     prompt_where: "איפה",
@@ -190,6 +192,18 @@ const STRINGS = {
     type_jewish_site: "אתר יהודי", type_druze_site: "אתר דרוזי",
     type_religious_site: "אתר דתי",
     cat_city: "עיר", cat_settlement: "יישוב", cat_landmark: "אתר",
+    badges_title: "הישגים",
+    badge_streak_7: "רצף שבוע",
+    badge_streak_7_desc: "שיחקו 7 ימים ברצף",
+    badge_streak_30: "רצף חודש",
+    badge_streak_30_desc: "שיחקו 30 ימים ברצף",
+    badge_streak_100: "רצף מאה",
+    badge_streak_100_desc: "שיחקו 100 ימים ברצף",
+    badge_perfect_round: "פגיעה מדויקת",
+    badge_perfect_round_desc: "ניחוש בדיוק של 0 ק״מ מהמקום",
+    badge_category_mastery: "אלופי האתרים",
+    badge_category_mastery_desc: "כל האתרים ביום אחד בניקוד מקסימלי",
+    badge_locked: "טרם הושג",
   },
   en: {
     site_title: "IsraelE — Daily Israel Geography Puzzle",
@@ -273,6 +287,8 @@ const STRINGS = {
     btn_signout_tooltip: "Sign out",
     btn_help_tooltip: "How to play",
     btn_archive_tooltip: "Puzzle archive",
+    cal_prev: "Previous month",
+    cal_next: "Next month",
     archive_title: "Puzzle archive",
     archive_hint: "Tap any date to play that day's puzzle.",
     prompt_where: "Where is",
@@ -323,6 +339,18 @@ const STRINGS = {
     type_jewish_site: "jewish site", type_druze_site: "druze site",
     type_religious_site: "religious site",
     cat_city: "city", cat_settlement: "settlement", cat_landmark: "landmark",
+    badges_title: "Achievements",
+    badge_streak_7: "Week streak",
+    badge_streak_7_desc: "Played 7 days in a row",
+    badge_streak_30: "Month streak",
+    badge_streak_30_desc: "Played 30 days in a row",
+    badge_streak_100: "Century streak",
+    badge_streak_100_desc: "Played 100 days in a row",
+    badge_perfect_round: "Bullseye",
+    badge_perfect_round_desc: "Guessed within 0 km of the true spot",
+    badge_category_mastery: "Landmark master",
+    badge_category_mastery_desc: "All landmarks in one day scored max",
+    badge_locked: "Not yet earned",
   },
 };
 
@@ -392,7 +420,7 @@ function applyI18n() {
     const key = el.getAttribute("data-i18n");
     const attr = el.getAttribute("data-i18n-attr");
     if (attr) {
-      el.setAttribute(attr, T(key));
+      attr.split(",").forEach((a) => el.setAttribute(a.trim(), T(key)));
     } else if (!el.hasAttribute("data-i18n-html")) {
       el.textContent = T(key);
     }
@@ -1655,6 +1683,7 @@ function showEnd(restored) {
   initEndDeck();                 // build/refresh the swipe deck, centered on score
   loadLeaderboardPanel();        // fetch + fill the leaderboard panel
   loadArchivePanel();            // prefetch history + render the calendar panel
+  loadBadgesPanel();              // fetch + fill the achievements panel
   if (restored) {
     document.getElementById("final-score").textContent = state.totalScore;
   } else {
@@ -1664,8 +1693,8 @@ function showEnd(restored) {
   if (!state.archive) setTimeout(maybeShowA2HS, 1400);
 }
 
-// ─── End-screen deck (Swiper coverflow: archive · board · score · places) ────
-const SCORE_SLIDE = 2;   // DOM order: 0 archive, 1 leaderboard, 2 score, 3 places
+// ─── End-screen deck (Swiper coverflow: archive · board · score · places · badges) ─
+const SCORE_SLIDE = 2;   // DOM order: 0 archive, 1 leaderboard, 2 score, 3 places, 4 badges
 
 function initEndDeck() {
   const host = document.querySelector(".end-swiper");
@@ -1877,6 +1906,40 @@ async function loadLeaderboardPanel() {
     state._deck?.update();              // row count changed → recompute slide height
   } catch (e) {
     console.warn("leaderboard load failed", e);
+    list.innerHTML = `<p>${T("lb_load_fail")}</p>`;
+  }
+}
+
+// Achievements: computed server-side on read from the games/guesses history
+// (no separate badges table). id order controls display order.
+const BADGE_DEFS = [
+  { id: "streak_7", emoji: "🔥" },
+  { id: "streak_30", emoji: "🔥" },
+  { id: "streak_100", emoji: "☄️" },
+  { id: "perfect_round", emoji: "🎯" },
+  { id: "category_mastery", emoji: "🏛️" },
+];
+
+async function loadBadgesPanel() {
+  const list = document.getElementById("badges-list");
+  if (!list) return;
+  list.innerHTML = "<p class='deck-loading'>…</p>";
+  try {
+    const badges = await fetchJSON(`/api/me/badges?player_id=${encodeURIComponent(playerId)}`, authHeaders());
+    const earned = badges.badges || {};
+    list.innerHTML = BADGE_DEFS.map((b) => {
+      const on = !!earned[b.id];
+      return `<div class="badge-tile${on ? " on" : " locked"}">`
+        + `<div class="badge-emoji">${b.emoji}</div>`
+        + `<div class="badge-info">`
+          + `<div class="badge-name">${escapeHtml(T("badge_" + b.id))}</div>`
+          + `<div class="badge-desc">${on ? escapeHtml(T("badge_" + b.id + "_desc")) : escapeHtml(T("badge_locked"))}</div>`
+        + `</div>`
+      + `</div>`;
+    }).join("");
+    state._deck?.update();
+  } catch (e) {
+    console.warn("badges load failed", e);
     list.innerHTML = `<p>${T("lb_load_fail")}</p>`;
   }
 }
@@ -2205,7 +2268,13 @@ function renderCalendar() {
     if (score != null) cls += " cal-played";
 
     const scoreBadge = score != null ? `<span class="cal-score">${score}</span>` : "";
-    cells.push(`<div class="${cls}"${dataset}>${d.getDate()}${scoreBadge}</div>`);
+    if (isPreEpoch || isFuture) {
+      cells.push(`<div class="${cls}">${d.getDate()}${scoreBadge}</div>`);
+    } else {
+      const dateLabel = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(d);
+      const label = score != null ? `${dateLabel}, ${T("score_label")}: ${score}` : dateLabel;
+      cells.push(`<button type="button" class="${cls}"${dataset} aria-label="${escapeHtml(label)}">${d.getDate()}${scoreBadge}</button>`);
+    }
   }
   const grid = document.getElementById("cal-grid");
   grid.innerHTML = cells.join("");

@@ -511,7 +511,7 @@ body.modal-open { overflow: hidden; }
 /* ---- streak flame (Lottie) ---- */
 .streak {
   display: inline-flex; align-items: center; gap: 12px;
-  margin: 16px auto 2px; padding: 6px 18px 6px 8px; border-radius: 999px;
+  margin: 16px auto 2px; padding-block: 6px; padding-inline: 18px 8px; border-radius: 999px;
   background: radial-gradient(120% 150% at 20% 100%, rgba(255,120,30,.20), rgba(255,60,60,.05) 70%, transparent);
   border: 1px solid rgba(255,150,60,.32);
 }
@@ -519,7 +519,7 @@ body.modal-open { overflow: hidden; }
 /* Fixed slot: the badge never resizes across tiers. The flame only scales
    *inside* this 50px box (JS sets transform, always <= 1), so it never overflows. */
 #streak-fire { width: 50px; height: 50px; flex: 0 0 50px; display: block; transform-origin: 50% 62%; filter: drop-shadow(0 0 9px rgba(255,140,40,.45)); }
-.streak .days { font-size: 26px; font-weight: 800; color: #ffd9a3; line-height: 1; font-variant-numeric: tabular-nums; text-align: right; }
+.streak .days { font-size: 26px; font-weight: 800; color: #ffd9a3; line-height: 1; font-variant-numeric: tabular-nums; text-align: start; }
 .streak .days small { display: block; font-size: 11px; font-weight: 600; opacity: .72; color: #ffcaa0; }
 
 /* ---- share CTA: shimmer button (prebuilt skewed light-sweep pattern) ---- */
@@ -580,7 +580,7 @@ body.modal-open { overflow: hidden; }
 .loc-panel #places-list { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; }
 .loc-panel #places-list .place-tile {
   display: flex; flex-direction: row; align-items: center; gap: 12px;
-  width: 100%; text-align: right; cursor: pointer; padding: 10px 12px;
+  width: 100%; text-align: start; cursor: pointer; padding: 10px 12px;
   text-decoration: none;
 }
 .loc-panel #places-list .place-img {
@@ -597,6 +597,20 @@ body.modal-open { overflow: hidden; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .loc-panel #places-list .place-tile:hover { border-color: rgba(120,165,255,.45); }
+
+/* ---- achievements ---- */
+.badges-panel #badges-list { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; }
+.badge-tile {
+  display: flex; flex-direction: row; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 12px;
+  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+}
+.badge-tile.on { background: rgba(237,175,65,.10); border-color: rgba(237,175,65,.4); }
+.badge-tile.locked { opacity: .5; filter: grayscale(1); }
+.badge-emoji { flex: 0 0 40px; font-size: 26px; text-align: center; }
+.badge-info { flex: 1 1 auto; min-width: 0; }
+.badge-name { font-size: 15px; font-weight: 800; color: #eef4ff; margin-bottom: 2px; }
+.badge-desc { font-size: 12px; opacity: .62; line-height: 1.3; }
 
 /* ---- leaderboard + archive inside panels ---- */
 .lb-panel #lb-list { display: flex; flex-direction: column; gap: 5px; max-height: 360px; overflow-y: auto; }

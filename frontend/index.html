@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl" class="sl-theme-dark">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title data-i18n="site_title">IsraelE — פאזל יומי של מקומות בישראל</title>
 <meta name="description" data-i18n-attr="content" data-i18n="site_desc" content="פאזל יומי בסגנון וורדל לישראל. 5 מקומות. נקודה אחת על המפה. כמה אתם מכירים את הארץ?" />
 <link rel="canonical" href="https://israel-e.com/" />
@@ -94,7 +94,7 @@
 <div id="topbar">
   <div id="user-chip" class="hidden">
     <span id="user-name"></span>
-    <button id="btn-history" data-i18n-attr="title" data-i18n="btn_history_tooltip" title="היסטוריה">📜</button>
+    <button id="btn-history" data-i18n-attr="title,aria-label" data-i18n="btn_history_tooltip" title="היסטוריה" aria-label="היסטוריה">📜</button>
     <button id="btn-signout" data-i18n-attr="title" data-i18n="btn_signout_tooltip" data-i18n-text="btn_signout" title="התנתק מהחשבון">התנתק</button>
   </div>
   <div id="toolbar">
@@ -228,9 +228,9 @@
         <div class="swiper-slide arch-panel">
           <div class="panel-label" data-i18n="archive_title">ארכיון פאזלים</div>
           <div class="cal-header">
-            <button id="cal-prev" class="cal-nav" type="button">‹</button>
+            <button id="cal-prev" class="cal-nav" type="button" data-i18n-attr="aria-label" data-i18n="cal_prev" aria-label="החודש הקודם">‹</button>
             <span id="cal-month-label"></span>
-            <button id="cal-next" class="cal-nav" type="button">›</button>
+            <button id="cal-next" class="cal-nav" type="button" data-i18n-attr="aria-label" data-i18n="cal_next" aria-label="החודש הבא">›</button>
           </div>
           <div id="cal-weekdays" class="cal-weekdays"></div>
           <div id="cal-grid" class="cal-grid"></div>
@@ -271,6 +271,12 @@
         <div class="swiper-slide loc-panel">
           <div class="panel-label" data-i18n="places_title">המקומות של היום</div>
           <div id="places-list"></div>
+        </div>
+
+        <!-- badges / achievements -->
+        <div class="swiper-slide badges-panel">
+          <div class="panel-label" data-i18n="badges_title">הישגים</div>
+          <div id="badges-list"></div>
         </div>
 
       </div>
