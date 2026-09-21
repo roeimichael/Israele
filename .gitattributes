@@ -1,0 +1,6 @@
+
+# Shell scripts must always check out with LF, even on Windows — a CRLF build
+# script breaks `bash scripts/vercel-build.sh` when deployed via `vercel deploy`
+# from a local Windows checkout (git's local core.autocrlf converts LF->CRLF
+# on checkout regardless of what's stored in the repo).
+*.sh text eol=lf
