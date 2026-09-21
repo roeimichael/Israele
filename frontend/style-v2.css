@@ -485,6 +485,19 @@ body.modal-open { overflow: hidden; }
 .end-swiper .swiper-slide-active {
   border-color: rgba(120,165,255,.5);
   box-shadow: 0 28px 70px rgba(0,40,140,.5), 0 0 0 1px rgba(120,165,255,.25) inset;
+  /* Swiper's coverflow effect applies a sub-pixel *negative* translateZ even to
+     the centered slide (float rounding in its depth formula, not exactly 0).
+     Inside this preserve-3d/perspective stack that's enough for Chromium's
+     hit-testing to resolve clicks/taps to the flat host container instead of
+     descending into the slide — the slide paints on top but doesn't receive
+     the click. Forcing an exact identity transform on the active slide only
+     (never the peeking side slides, which must stay 3D for the coverflow
+     look) fixes hit-testing with no visible change, since the value being
+     overridden was already ~0. This is the actual fix for taps on archive
+     calendar days (and any other control inside the active slide) doing
+     nothing — a prior swiper-no-swiping fix addressed touch/swipe-gesture
+     cancellation but not this separate hit-testing issue. */
+  transform: none !important;
 }
 /* Coverflow peeks the neighbor slides at the sides (overflow: visible above).
    Without dimming, an un-scaled full-opacity neighbor reads as a layout bug
