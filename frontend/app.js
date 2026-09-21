@@ -1700,11 +1700,19 @@ function initEndDeck() {
   const host = document.querySelector(".end-swiper");
   if (!host || !window.Swiper) return;
   requestAnimationFrame(() => {
-    if (state._deck) {
+    // state._deck can outlive the DOM node it was built on (e.g. showEnd runs
+    // again on a fresh #end-card after a resync). Reusing it then is a no-op:
+    // .update()/.slideTo() operate on the detached node, the live host never
+    // gets a swiper instance, and every slide shows undimmed (no active class).
+    if (state._deck && host.swiper === state._deck) {
       state._deck.update();
       state._deck.slideTo(SCORE_SLIDE, 0);
       syncDeckDots();
       return;
+    }
+    if (state._deck) {
+      console.warn("[deck] stale Swiper instance detached from host — recreating");
+      try { state._deck.destroy(true, false); } catch (_) {}
     }
     state._deck = new Swiper(host, {
       effect: "coverflow",
