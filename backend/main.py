@@ -3,7 +3,10 @@ import hashlib
 import json
 import logging
 import os
+import secrets
+import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -21,13 +24,30 @@ from .scoring import base_score, haversine_km
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("israelle")
 
-app = FastAPI(title="israelle")
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """Open the Supabase HTTP client + do a tiny no-op query so the first user
+    request after deploy doesn't eat the TCP/TLS handshake cost (~1-2s)."""
+    try:
+        supa._c()  # initialize httpx.Client + connection pool
+        # Touch one cheap row so DNS, TLS, and PostgREST routing are all warm.
+        supa.select("places", select="id", limit=1)
+        log.info("supabase warmup ok")
+    except Exception as e:
+        log.warning("supabase warmup failed: %s", e)
+    yield
+
+
+app = FastAPI(title="israelle", lifespan=_lifespan)
 
 # Comma-separated origins, e.g. "https://israel-e.com,https://*.vercel.app".
+# Set in the Vercel project's env vars (see docs/MIGRATION.md).
+_PROD_ORIGINS = ["https://israel-e.com", "https://www.israel-e.com"]
 _origins_raw = os.environ.get("ALLOWED_ORIGINS", "").strip()
 if not _origins_raw:
-    log.warning("ALLOWED_ORIGINS unset — falling back to '*'. Set this on Railway in prod.")
-    _origins = ["*"]
+    log.warning("ALLOWED_ORIGINS unset — falling back to known prod origins only, not '*'.")
+    _origins = _PROD_ORIGINS
 else:
     _origins = [o.strip() for o in _origins_raw.split(",") if o.strip()]
 app.add_middleware(
@@ -196,22 +216,8 @@ def israel_border():
 
 @app.get("/api/healthz")
 def healthz():
-    """Lightweight ping. Used by Railway's healthcheck so the container stays
-    warm + by uptime monitors. Does NOT hit Supabase to keep it cheap."""
+    """Lightweight ping for uptime monitors. Does NOT hit Supabase to keep it cheap."""
     return {"ok": True}
-
-
-@app.on_event("startup")
-def _warmup() -> None:
-    """Open the Supabase HTTP client + do a tiny no-op query so the first user
-    request after deploy doesn't eat the TCP/TLS handshake cost (~1-2s)."""
-    try:
-        supa._c()  # initialize httpx.Client + connection pool
-        # Touch one cheap row so DNS, TLS, and PostgREST routing are all warm.
-        supa.select("places", select="id", limit=1)
-        log.info("supabase warmup ok")
-    except Exception as e:
-        log.warning("supabase warmup failed: %s", e)
 
 
 # ─── daily puzzle ────────────────────────────────────────────────────────────
@@ -463,6 +469,12 @@ def today_guess(body: GuessIn, request: Request):
         if owner and owner[0].get("auth_user_id"):
             raise HTTPException(401, detail="session_expired")
     user_jwt = jwt if auth_user_id else None
+    if auth_user_id:
+        # Local backstop in front of RLS: never let a signed-in user write
+        # under a player_id another account already owns.
+        owner = supa.select("players", select="auth_user_id", id=f"eq.{pid}")
+        if owner and owner[0].get("auth_user_id") not in (None, auth_user_id):
+            raise HTTPException(403, detail="player_not_owned")
 
     # 1) Upsert player. Ignore-duplicates so the row exists, then patch name/auth.
     try:
@@ -474,15 +486,23 @@ def today_guess(body: GuessIn, request: Request):
             prefer="return=minimal,resolution=ignore-duplicates",
             jwt=user_jwt,
         )
-    except httpx.HTTPStatusError:
-        pass
+    except httpx.HTTPStatusError as e:
+        # Only the expected duplicate-key race is safe to ignore here; any
+        # other REST error (e.g. an RLS rejection) should surface, not vanish.
+        if e.response is None or "23505" not in e.response.text:
+            raise
     patch = {}
     if body.name:
         patch["name"] = body.name
     if auth_user_id:
         patch["auth_user_id"] = auth_user_id
     if patch:
-        supa.update("players", {"id": f"eq.{pid}"}, patch, jwt=user_jwt)
+        try:
+            supa.update("players", {"id": f"eq.{pid}"}, patch, jwt=user_jwt)
+        except httpx.HTTPStatusError as e:
+            if e.response is not None and e.response.status_code in (401, 403):
+                raise HTTPException(401, detail="session_expired")
+            raise
 
     # 2) Upsert game row (one per player per day).
     try:
@@ -642,6 +662,76 @@ def my_stats(player_id: str, request: Request):
     }
 
 
+@app.get("/api/me/badges")
+def my_badges(player_id: str, request: Request):
+    """Achievements computed on read from `games` + `guesses` — no new table.
+    Streak milestones use the same longest-consecutive-run logic as
+    /api/me/stats (a milestone counts once it's ever been reached, not just
+    on the current live streak)."""
+    player_id = _coerce_pid(player_id)
+    _require_player_access(player_id, request)
+    games = supa.select(
+        "games",
+        select="id,puzzle_date",
+        player_id=f"eq.{player_id}",
+        order="puzzle_date.desc",
+        limit=400,
+    )
+    empty = {"streak_7": False, "streak_30": False, "streak_100": False,
+              "perfect_round": False, "category_mastery": False}
+    if not games:
+        return {"badges": empty, "max_streak": 0}
+
+    from datetime import timedelta
+    dates = {r["puzzle_date"] for r in games}
+    ds_set = {date.fromisoformat(d) for d in dates}
+    max_streak = 0
+    for d_ in ds_set:
+        if (d_ - timedelta(days=1)) in ds_set:
+            continue  # not a run start
+        n, cur = 0, d_
+        while cur in ds_set:
+            n += 1
+            cur += timedelta(days=1)
+        max_streak = max(max_streak, n)
+
+    game_ids = ",".join(str(g["id"]) for g in games)
+    guesses = supa.select(
+        "guesses",
+        select="game_id,place_id,base_score",
+        game_id=f"in.({game_ids})",
+    )
+    perfect_round = any(g["base_score"] >= 100 for g in guesses)
+
+    by_game: dict[str, list[dict]] = {}
+    for g in guesses:
+        by_game.setdefault(g["game_id"], []).append(g)
+    # Category mastery: some day where every landmark-type guess scored max.
+    # Composition always has exactly 2 landmark rounds/day (places._category),
+    # so require both to be recorded — avoids flagging it mid-day off a single
+    # lucky landmark guess before the other one has been played.
+    category_mastery = False
+    for rows in by_game.values():
+        landmark_scores = [
+            r["base_score"] for r in rows
+            if (places.get(int(r["place_id"])) or {}).get("category") == "landmark"
+        ]
+        if len(landmark_scores) >= 2 and all(s >= 100 for s in landmark_scores):
+            category_mastery = True
+            break
+
+    return {
+        "badges": {
+            "streak_7": max_streak >= 7,
+            "streak_30": max_streak >= 30,
+            "streak_100": max_streak >= 100,
+            "perfect_round": perfect_round,
+            "category_mastery": category_mastery,
+        },
+        "max_streak": max_streak,
+    }
+
+
 @app.get("/api/leaderboard")
 def leaderboard(date: str | None = None, player_id: str | None = None):
     """Top 10 + caller's row when they're outside the top 10."""
@@ -686,6 +776,131 @@ def leaderboard(date: str | None = None, player_id: str | None = None):
                 break
 
     return {"date": date, "top": top, "me": me, "total_players": len(rows)}
+
+
+# ─── owner-only analytics ────────────────────────────────────────────────────
+
+
+# Best-effort per-IP lockout on admin auth failures. In-memory only (resets
+# on cold start / doesn't share across serverless instances), but it still
+# raises the cost of a brute-force run and makes it show up in logs.
+_admin_fail_log: dict[str, list[float]] = {}
+_ADMIN_MAX_FAILS = 5
+_ADMIN_LOCKOUT_S = 300.0
+
+
+def _require_admin(request: Request) -> None:
+    token = os.environ.get("ADMIN_TOKEN", "")
+    if not token:
+        raise HTTPException(503, "admin analytics not configured")
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    recent = [t for t in _admin_fail_log.get(ip, []) if now - t < _ADMIN_LOCKOUT_S]
+    if len(recent) >= _ADMIN_MAX_FAILS:
+        raise HTTPException(429, "too many failed attempts, try again later")
+    given = request.headers.get("X-Admin-Token", "")
+    if not given or not secrets.compare_digest(given, token):
+        recent.append(now)
+        _admin_fail_log[ip] = recent
+        log.warning("admin auth failed from %s (%d recent failures)", ip, len(recent))
+        raise HTTPException(401, "bad admin token")
+    _admin_fail_log.pop(ip, None)
+
+
+@app.get("/api/admin/stats")
+def admin_stats(request: Request, days: int = 14):
+    """Owner-only: DAU, score distribution, day-over-day retention, and
+    per-category guess accuracy over a trailing window. Single shared
+    ADMIN_TOKEN checked via X-Admin-Token header — no user accounts."""
+    _require_admin(request)
+    from datetime import timedelta
+    from statistics import median
+
+    days = max(1, min(days, 90))
+    today_d = date.fromisoformat(_il_today_iso())
+    start_d = today_d - timedelta(days=days - 1)
+    start_iso = start_d.isoformat()
+
+    games_rows = supa.select(
+        "games",
+        select="player_id,puzzle_date,total_score",
+        puzzle_date=f"gte.{start_iso}",
+    )
+    by_date: dict[str, list[dict]] = {}
+    for r in games_rows:
+        by_date.setdefault(r["puzzle_date"], []).append(r)
+
+    # daily active players + day-over-day retention (walk the window in order
+    # so each day's retention compares against the previous calendar day,
+    # even if that day had zero games).
+    dau = []
+    retention = []
+    prev_players: set[str] | None = None
+    cur = start_d
+    while cur <= today_d:
+        d_iso = cur.isoformat()
+        players_today = {r["player_id"] for r in by_date.get(d_iso, [])}
+        dau.append({"date": d_iso, "count": len(players_today)})
+        if prev_players is not None:
+            returning = players_today & prev_players
+            retention.append({
+                "date": d_iso,
+                "prev_day_active": len(prev_players),
+                "returning_from_prev_day": len(returning),
+                "retention_pct": round(100 * len(returning) / len(prev_players), 1) if prev_players else None,
+            })
+        prev_players = players_today
+        cur += timedelta(days=1)
+
+    # score distribution across the whole window (same 5-bucket scheme as /api/me/stats)
+    scores = [r["total_score"] for r in games_rows if r.get("total_score") is not None]
+    histogram = [0] * 5
+    for s in scores:
+        histogram[min(4, s // 200)] += 1
+    score_distribution = {
+        "count": len(scores),
+        "avg": round(sum(scores) / len(scores)) if scores else 0,
+        "median": round(median(scores)) if scores else 0,
+        "min": min(scores) if scores else 0,
+        "max": max(scores) if scores else 0,
+        "buckets": ["0-200", "200-400", "400-600", "600-800", "800-1000"],
+        "histogram": histogram,
+    }
+
+    # per-category accuracy: embed games so we can filter guesses by puzzle_date
+    # without a second round trip; category itself only lives in the local CSV.
+    guess_rows = supa.select(
+        "guesses",
+        select="place_id,distance_km,round_score,games!inner(puzzle_date)",
+        **{"games.puzzle_date": f"gte.{start_iso}"},
+    )
+    by_cat: dict[str, dict] = {}
+    for r in guess_rows:
+        p = places.get(int(r["place_id"]))
+        cat = p["category"] if p else "unknown"
+        b = by_cat.setdefault(cat, {"n": 0, "dist_sum": 0.0, "score_sum": 0})
+        b["n"] += 1
+        b["dist_sum"] += r.get("distance_km") or 0
+        b["score_sum"] += r.get("round_score") or 0
+    category_accuracy = [
+        {
+            "category": cat,
+            "guesses": b["n"],
+            "avg_distance_km": round(b["dist_sum"] / b["n"], 2),
+            "avg_round_score": round(b["score_sum"] / b["n"]),
+        }
+        for cat, b in sorted(by_cat.items())
+    ]
+
+    return {
+        "window_days": days,
+        "start_date": start_iso,
+        "end_date": today_d.isoformat(),
+        "daily_active_players": dau,
+        "retention": retention,
+        "score_distribution": score_distribution,
+        "category_accuracy": category_accuracy,
+    }
 
 
 # ─── SEO: dynamic sitemap with all archive days ──────────────────────────────
