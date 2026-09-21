@@ -1047,7 +1047,15 @@ body.awaiting-click .maplibregl-canvas { cursor: crosshair; }
   text-align: center; text-transform: uppercase; letter-spacing: 0.5px;
 }
 .cal-cell {
-  aspect-ratio: 1 / 1;
+  /* Was aspect-ratio: 1/1, which feeds back into the grid's 1fr column
+     sizing: whichever row has taller content (the "today" cell's score
+     badge adds a second line) pulls its whole row taller, and aspect-ratio
+     then pulls THAT row's cells wider too — but width is a per-column grid
+     track shared by every row, so only the columns that happen to contain
+     a tall row end up wider, leaving the rest visibly narrower and the
+     grid off-center relative to the weekday header above it. A fixed
+     height has no such feedback into column width. */
+  height: 44px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   border-radius: 8px; font-size: 13px;
