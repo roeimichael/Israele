@@ -486,6 +486,14 @@ body.modal-open { overflow: hidden; }
   border-color: rgba(120,165,255,.5);
   box-shadow: 0 28px 70px rgba(0,40,140,.5), 0 0 0 1px rgba(120,165,255,.25) inset;
 }
+/* Coverflow peeks the neighbor slides at the sides (overflow: visible above).
+   Without dimming, an un-scaled full-opacity neighbor reads as a layout bug
+   rather than a card stack, especially on wide/desktop viewports. */
+.end-swiper .swiper-slide:not(.swiper-slide-active) {
+  opacity: .32;
+  filter: saturate(.7);
+  transition: opacity .3s ease;
+}
 
 .panel-label {
   font-size: 12px; font-weight: 700; letter-spacing: .4px;

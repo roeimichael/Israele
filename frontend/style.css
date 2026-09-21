@@ -20,6 +20,20 @@ html, body {
 body { background: var(--bg); overscroll-behavior: none; }
 .hidden { display: none !important; }
 
+/* Tiny deploy-verification tag, meant to be noticed only by the owner. */
+#build-tag {
+  position: fixed;
+  bottom: 3px;
+  right: 5px;
+  font-size: 8px;
+  line-height: 1;
+  color: rgba(255, 255, 255, .18);
+  font-family: monospace;
+  pointer-events: none;
+  user-select: none;
+  z-index: 5;
+}
+
 /* Keyboard a11y: visible focus rings on interactive controls only. */
 :focus { outline: none; }
 button:focus-visible,

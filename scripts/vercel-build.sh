@@ -2,6 +2,8 @@
 set -e
 mkdir -p public/docs
 cp frontend/index.html public/index.html
+BUILD_SHA="${VERCEL_GIT_COMMIT_SHA:-dev}"
+sed -i "s/__BUILD_SHA__/${BUILD_SHA:0:7}/" public/index.html
 cp frontend/app.js public/app.js
 cp frontend/style.css public/style.css
 cp frontend/style-v2.css public/style-v2.css
