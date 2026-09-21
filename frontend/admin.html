@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>IsraelE — Admin Stats</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background: #12141a; color: #e8e8ec; margin: 0; padding: 24px; }
+  h1 { font-size: 18px; margin: 0 0 16px; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: #9aa0ac; margin: 28px 0 10px; }
+  .bar { display: flex; gap: 10px; align-items: center; margin: 24px 0 16px; flex-wrap: wrap; }
+  input, button { font: inherit; padding: 7px 10px; border-radius: 6px; border: 1px solid #3a3f4b; background: #1c1f27; color: #e8e8ec; }
+  button { cursor: pointer; background: #2c5cf0; border-color: #2c5cf0; }
+  button:hover { background: #2450d6; }
+  #err { color: #ff6b6b; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; max-width: 700px; font-size: 13px; }
+  th, td { text-align: left; padding: 5px 10px; border-bottom: 1px solid #262a33; }
+  th { color: #9aa0ac; font-weight: 500; }
+  .row-bar { display: inline-block; height: 10px; background: #2c5cf0; border-radius: 2px; vertical-align: middle; margin-inline-start: 8px; }
+  .stat { display: inline-block; margin-inline-end: 20px; font-size: 13px; color: #9aa0ac; }
+  .stat b { color: #e8e8ec; font-size: 15px; display: block; }
+  #out { display: none; }
+</style>
+</head>
+<body>
+  <h1>IsraelE — owner analytics</h1>
+  <div class="bar">
+    <input id="token" type="password" placeholder="admin token" autocomplete="off">
+    <input id="days" type="number" min="1" max="90" value="14" style="width:70px" title="window (days)">
+    <button id="go">Load</button>
+    <span id="err"></span>
+  </div>
+
+  <div id="out">
+    <h2>Daily active players</h2>
+    <table id="dau"><thead><tr><th>Date</th><th>Players</th><th></th></tr></thead><tbody></tbody></table>
+
+    <h2>Day-over-day retention</h2>
+    <table id="retention"><thead><tr><th>Date</th><th>Prev-day active</th><th>Returned</th><th>Retention</th></tr></thead><tbody></tbody></table>
+
+    <h2>Score distribution</h2>
+    <div id="score-summary"></div>
+    <table id="score-hist"><thead><tr><th>Range</th><th>Games</th><th></th></tr></thead><tbody></tbody></table>
+
+    <h2>Per-category accuracy</h2>
+    <table id="category"><thead><tr><th>Category</th><th>Guesses</th><th>Avg distance (km)</th><th>Avg round score</th></tr></thead><tbody></tbody></table>
+  </div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const TOKEN_KEY = "israelle_admin_token";
+// sessionStorage, not localStorage: token dies with the tab instead of
+// persisting indefinitely on an origin shared with the public game frontend.
+$("#token").value = sessionStorage.getItem(TOKEN_KEY) || "";
+
+function bar(pct, color) {
+  return `<span class="row-bar" style="width:${Math.max(2, pct)}px;background:${color || '#2c5cf0'}"></span>`;
+}
+
+function fillTable(sel, rows) {
+  $(sel + " tbody").innerHTML = rows.join("");
+}
+
+async function load() {
+  $("#err").textContent = "";
+  const token = $("#token").value.trim();
+  const days = $("#days").value || 14;
+  if (!token) { $("#err").textContent = "enter admin token"; return; }
+  sessionStorage.setItem(TOKEN_KEY, token);
+  let res;
+  try {
+    res = await fetch(`/api/admin/stats?days=${encodeURIComponent(days)}`, {
+      headers: { "X-Admin-Token": token },
+    });
+  } catch (e) {
+    $("#err").textContent = "network error: " + e.message;
+    return;
+  }
+  if (!res.ok) {
+    $("#err").textContent = `error ${res.status}: ${await res.text()}`;
+    return;
+  }
+  const data = await res.json();
+  $("#out").style.display = "block";
+
+  const maxDau = Math.max(1, ...data.daily_active_players.map(r => r.count));
+  fillTable("#dau", data.daily_active_players.map(r =>
+    `<tr><td>${r.date}</td><td>${r.count}</td><td>${bar(r.count / maxDau * 200)}</td></tr>`));
+
+  fillTable("#retention", data.retention.map(r =>
+    `<tr><td>${r.date}</td><td>${r.prev_day_active}</td><td>${r.returning_from_prev_day}</td>` +
+    `<td>${r.retention_pct === null ? "—" : r.retention_pct + "%"}</td></tr>`));
+
+  const sd = data.score_distribution;
+  $("#score-summary").innerHTML =
+    `<span class="stat"><b>${sd.count}</b>games</span>` +
+    `<span class="stat"><b>${sd.avg}</b>avg</span>` +
+    `<span class="stat"><b>${sd.median}</b>median</span>` +
+    `<span class="stat"><b>${sd.min}–${sd.max}</b>range</span>`;
+  const maxBucket = Math.max(1, ...sd.histogram);
+  fillTable("#score-hist", sd.buckets.map((label, i) =>
+    `<tr><td>${label}</td><td>${sd.histogram[i]}</td><td>${bar(sd.histogram[i] / maxBucket * 200)}</td></tr>`));
+
+  fillTable("#category", data.category_accuracy.map(c =>
+    `<tr><td>${c.category}</td><td>${c.guesses}</td><td>${c.avg_distance_km}</td><td>${c.avg_round_score}</td></tr>`));
+}
+
+$("#go").addEventListener("click", load);
+$("#days").addEventListener("keydown", (e) => { if (e.key === "Enter") load(); });
+$("#token").addEventListener("keydown", (e) => { if (e.key === "Enter") load(); });
+if ($("#token").value) load();
+</script>
+</body>
+</html>

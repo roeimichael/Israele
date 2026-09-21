@@ -1,5 +1,7 @@
 """Thin Supabase REST + Auth wrapper. All writes via service-level publishable
 key; RLS policies enforce shape, backend enforces ownership."""
+import base64
+import json
 import os
 import time
 
@@ -7,6 +9,27 @@ import httpx
 
 URL = os.environ.get("SUPABASE_URL", "")
 KEY = os.environ.get("SUPABASE_KEY", "")
+
+
+def _assert_not_service_role(key: str) -> None:
+    """Boot-time guard: KEY is handed to every browser via GET /api/config as
+    the "safe" publishable key. If it were ever the service_role key instead,
+    that's a silent full-DB leak — fail loud here instead."""
+    if not key:
+        return
+    if key.startswith("sb_secret_"):
+        raise RuntimeError("SUPABASE_KEY looks like a service_role secret key (sb_secret_...); use the publishable/anon key")
+    parts = key.split(".")
+    if len(parts) == 3:  # legacy Supabase keys are JWTs; decode (don't verify) to check the role claim
+        try:
+            payload = json.loads(base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4)))
+        except Exception:
+            return  # not a decodable JWT — don't block boot over a parsing quirk
+        if payload.get("role") == "service_role":
+            raise RuntimeError("SUPABASE_KEY is a service_role JWT, not anon/publishable; refusing to start")
+
+
+_assert_not_service_role(KEY)
 
 # JWT verify is called per guess; cache the auth/v1/user round-trip for 60s
 # to keep latency low (LRU-style, but tiny).
